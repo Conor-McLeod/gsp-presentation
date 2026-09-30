@@ -1,0 +1,6 @@
+gpu,year,low_precision_format,low_precision_dense_tflops,fp64_native_tflops,fp64_emulated_tflops,notes
+A100 SXM,2020,FP16,312,19.5,,FP64 = FP64 tensor core; dense FP16 tensor
+H100 SXM,2022,FP8,1979,67,,FP64 = FP64 tensor core; datasheet headline 3958 FP8 is sparse
+B200,2024,FP4,9000,37,,Approx; per-GPU HGX B200 figures vary slightly by SKU
+B300,2025,NVFP4,15000,1.2,,FP64 cut to make room for NVFP4 tensor cores
+Rubin,2026,NVFP4,35000,33,200,NVFP4 training figure (50000 inference headline uses adaptive compression); FP64 emulated via Ozaki DGEMM on FP8; preliminary
