@@ -135,7 +135,10 @@ const calc = computed(() => {
   const Cmid = mods.map((p, t) => Alo[t].map(row => Array.from({ length: NC }, (_, j) =>
     rmod(BigInt(row.reduce((a, x, h) => a + x * Blo[t][h][j], 0)), p))))
 
-  // CRT, exactly.
+  // Direct CRT reconstruction, as in the paper and par_gemmul8's inverse_scaling
+  // (exact here; the kernel uses double-double): S = sum_i w_i * U_i with weights
+  // w_i = (P / p_i) * q_i, then one correction C'' = S - P * round(S / P).
+  // S[k - 1] is the running sum after k terms, for the animation.
   const P = mods.reduce((a, p) => a * BigInt(p), 1n)
   const w = mods.map((p) => {
     const Pi = P / BigInt(p)
@@ -143,13 +146,17 @@ const calc = computed(() => {
     while ((Pi * q) % BigInt(p) !== 1n) q++
     return Pi * q
   })
-  const Cpp = Array.from({ length: M }, (_, i) => Array.from({ length: NC }, (_, j) => {
-    let s = 0n
-    mods.forEach((_, t) => { s += w[t] * BigInt(Cmid[t][i][j]) })
-    let r = ((s % P) + P) % P
+  const S: bigint[][][] = []
+  mods.forEach((_, t) => {
+    S.push(Array.from({ length: M }, (_, i) => Array.from({ length: NC }, (_, j) =>
+      (t ? S[t - 1][i][j] : 0n) + w[t] * BigInt(Cmid[t][i][j]))))
+  })
+  const Q = S[n - 1].map(row => row.map((v) => {
+    let r = ((v % P) + P) % P
     if (2n * r > P) r -= P
-    return r
+    return (v - r) / P // round(S / P)
   }))
+  const Cpp = S[n - 1].map((row, i) => row.map((v, j) => v - Q[i][j] * P))
   const exactProd = Ac.map(row => Array.from({ length: NC }, (_, j) => row.reduce((a, x, h) => a + x * Bc[h][j], 0n)))
   const crtOk = Cpp.every((row, i) => row.every((v, j) => v === exactProd[i][j]))
 
@@ -166,7 +173,7 @@ const calc = computed(() => {
   }))) / refMax
   const fp64 = A.map(row => Array.from({ length: NC }, (_, j) => row.reduce((a, x, h) => a + x * B[h][j], 0)))
 
-  return { mods, l2P, sA, sB, Ac, Bc, Alo, Blo, Cmid, Cpp, crtOk, C, err: relErr(C), errFp64: relErr(fp64) }
+  return { mods, l2P, sA, sB, Ac, Bc, Alo, Blo, Cmid, P, w, S, Q, Cpp, crtOk, C, err: relErr(C), errFp64: relErr(fp64) }
 })
 
 // --- presentation state ---------------------------------------------------------
@@ -176,25 +183,46 @@ const STEPS = [
   { name: 'Scale & truncate', text: 'Scale each row of A and column of B by a power of two, then truncate to integers: A′ = trunc(diag(μ)·A), B′ = trunc(B·diag(ν)). The powers are as large as possible while keeping every |A′B′| < 𝒫/2. Truncation is the only rounding step.' },
   { name: 'Slice', text: 'For each modulus, A′ᵢ = A′ mod pᵢ (signed). N integer matrices become N int8 slices each.' },
   { name: 'N int8 GEMMs', text: 'Cᵢ = A′ᵢ·B′ᵢ mod pᵢ, one int8 tensor-core GEMM per modulus. They are independent: this is the work par_gemmul8 distributes.' },
-  { name: 'CRT', text: 'Each entry of A′B′ is rebuilt exactly from its N residues with the Chinese Remainder Theorem.' },
+  { name: 'CRT', text: 'Direct CRT reconstruction: weight each slice by wᵢ = (𝒫/pᵢ)·qᵢ, which is ≡ 1 mod pᵢ and ≡ 0 mod every other modulus, and add. The N terms are independent, one fma each per entry. The sum S is far outside [−𝒫/2, 𝒫/2); one correction S − 𝒫·round(S/𝒫) brings it back, and there it equals A′B′ exactly.' },
   { name: 'Unscale', text: 'Undo the powers of two: C = diag(μ)^{−1}·C″·diag(ν)^{−1}.' },
 ]
 const s = computed(() => Math.min(Math.max(step.value, 0), STEPS.length - 1))
 
 const sel = ref(0) // which slice is in front
 const pinned = ref(false)
+// CRT step: how many weighted terms are in the sum; N + 1 means the final
+// S - P * round(S / P) correction has been applied.
+const merged = ref(1)
 let timer: ReturnType<typeof setInterval> | undefined
-watch([s, N], () => {
+function stopTimer() {
   if (timer) clearInterval(timer)
   timer = undefined
+}
+function replayCrt() {
+  stopTimer()
+  merged.value = 1
+  // About six seconds for the whole stack, whatever N is.
+  const ms = Math.min(900, Math.max(350, 6000 / (N.value + 1)))
+  timer = setInterval(() => {
+    if (merged.value <= N.value) merged.value++
+    else stopTimer()
+  }, ms)
+}
+watch([s, N], () => {
+  stopTimer()
   pinned.value = false
   sel.value = Math.min(sel.value, N.value - 1)
+  merged.value = N.value + 1
   if (s.value === 3) {
     sel.value = 0
     timer = setInterval(() => { if (!pinned.value) sel.value = (sel.value + 1) % N.value }, 900)
   }
+  if (s.value === 4) {
+    sel.value = 0
+    replayCrt()
+  }
 }, { immediate: true })
-onBeforeUnmount(() => timer && clearInterval(timer))
+onBeforeUnmount(stopTimer)
 function pick(t: number) {
   sel.value = t
   pinned.value = true
@@ -249,6 +277,19 @@ function planeStyle(t: number, expanded: boolean) {
     zIndex: N.value - pos,
   }
 }
+// CRT step: the first `merged` weighted slices have been added into the front
+// card and the rest of the stack slides up behind it.
+function cPlaneStyle(t: number) {
+  if (s.value !== 4) return planeStyle(t, cSliced.value)
+  const pos = Math.max(0, t - merged.value + 1)
+  return { transform: `translate(${pos * D.value}px, ${-pos * D.value}px)`, zIndex: N.value - t }
+}
+const merging = computed(() => s.value === 4)
+const terms = computed(() => Math.min(merged.value, N.value))
+const corrected = computed(() => merged.value > N.value)
+// What the front card shows: the running sum, or C'' once corrected.
+const cur = computed(() => corrected.value ? calc.value.Cpp : calc.value.S[terms.value - 1])
+const maxBits = (X: bigint[][]) => Math.max(...X.flat().map(v => log2Big(v < 0n ? -v : v)))
 const aSliced = computed(() => s.value >= 2)
 const cSliced = computed(() => s.value === 3)
 
@@ -274,7 +315,12 @@ function infoC(i: number, j: number) {
     const t = sel.value
     return `C${sub(t)}[${i},${j}] = row ${i} of A′${sub(t)} · column ${j} of B′${sub(t)}, mod ${c.mods[t]} = ${c.Cmid[t][i][j]}`
   }
-  if (s.value === 4) return `C″[${i},${j}] = ${c.Cpp[i][j]}, rebuilt from residues ${c.Cmid.map(m => m[i][j]).join(', ')}`
+  if (s.value === 4) {
+    const k = terms.value
+    const sum = c.Cmid.slice(0, k).map((m, t) => `w${sub(t)}·${m[i][j]}`).join(' + ')
+    if (!corrected.value) return `S[${i},${j}] = ${sum} = ${fmtInt(c.S[k - 1][i][j])}`
+    return `S[${i},${j}] = ${fmtInt(c.S[N.value - 1][i][j])}, round(S/𝒫) = ${c.Q[i][j]}, C″ = S − ${c.Q[i][j]}·𝒫 = ${c.Cpp[i][j]}`
+  }
   if (s.value === 5) return `C[${i},${j}] = C″ × 2${sup(-c.sA[i] - c.sB[j])} = ${c.C[i][j]}`
   return ''
 }
@@ -283,7 +329,10 @@ const sub = (v: number) => String(v + 1).split('').map(c => SUB[c]).join('')
 
 const caption = computed(() => {
   const c = calc.value
-  if (s.value === 4) return c.crtOk ? '✓ C″ = A′B′ exactly' : '✗ CRT mismatch'
+  if (s.value === 4) {
+    if (!corrected.value) return `${terms.value} of ${N.value} terms: |S| ≈ 2${sup(maxBits(cur.value).toFixed(0))}, but 𝒫/2 ≈ 2${sup((log2Big(c.P) - 1).toFixed(0))}`
+    return c.crtOk ? '✓ S − 𝒫·round(S/𝒫) = A′B′ exactly' : '✗ CRT mismatch'
+  }
   if (s.value === 5) return `max relative error ${fmtErr(c.err)} with N = ${N.value} (plain FP64 A·B: ${fmtErr(c.errFp64)})`
   if (s.value === 1) return `per-factor budget: ${c.l2P.toFixed(1)} bits with N = ${N.value}`
   return ''
@@ -347,23 +396,24 @@ const caption = computed(() => {
 
       <!-- C -->
       <div class="mat">
-        <div class="label">{{ s < 3 ? 'C' : s === 3 ? 'Cᵢ' : s === 4 ? 'C″ = A′B′' : 'C' }}</div>
+        <div class="label">{{ s < 3 ? 'C' : s === 3 ? 'Cᵢ' : s === 4 ? (corrected ? 'C″ = A′B′' : 'S') : 'C' }}</div>
         <div class="stack" :style="{ paddingTop: `${STACK_PAD - 16}px`, paddingRight: `${STACK_PAD}px` }">
-          <div v-for="t in N" :key="t" class="plane" :class="{ front: t - 1 === sel || !cSliced, pending: s < 3 }"
-               :style="[planeStyle(t - 1, cSliced), { gridTemplateColumns: `repeat(${NC}, var(--cw))` }]">
-            <template v-if="t - 1 === sel || (!cSliced && t === 1)">
+          <div v-for="t in N" :key="t" class="plane" :class="{ front: merging ? t === 1 : t - 1 === sel || !cSliced, pending: s < 3 }"
+               :style="[cPlaneStyle(t - 1), { gridTemplateColumns: `repeat(${NC}, var(--cw))` }]">
+            <template v-if="merging ? t === 1 : t - 1 === sel || (!cSliced && t === 1)">
               <template v-for="i in M" :key="i">
-                <div v-for="j in NC" :key="j" class="cell"
-                     :style="s === 4 ? tintBits(calc.Cpp[i - 1][j - 1], 2 * calc.l2P + 2) : s === 5 ? tintFp(calc.C[i - 1][j - 1]) : {}"
+                <div v-for="j in NC" :key="j" class="cell" :class="{ settled: merging && corrected }"
+                     :style="s === 4 ? tintBits(cur[i - 1][j - 1], log2Big(calc.P) + 12) : s === 5 ? tintFp(calc.C[i - 1][j - 1]) : {}"
                      @mouseenter="hover = infoC(i - 1, j - 1)">
                   <template v-if="s < 3">?</template>
                   <template v-else-if="s === 3">{{ calc.Cmid[sel][i - 1][j - 1] }}</template>
-                  <template v-else-if="s === 4">{{ fmtInt(calc.Cpp[i - 1][j - 1]) }}</template>
+                  <template v-else-if="s === 4">{{ fmtInt(cur[i - 1][j - 1]) }}</template>
                   <template v-else>{{ fmtFp(calc.C[i - 1][j - 1]) }}</template>
                 </div>
               </template>
             </template>
             <span v-if="cSliced && t - 1 === sel" class="tag">mod {{ calc.mods[sel] }}</span>
+            <span v-if="merging && t === 1" class="tag">{{ corrected ? '− 𝒫·round(S/𝒫)' : `Σ wᵢ·Cᵢ: ${terms} of ${N}` }}</span>
           </div>
         </div>
       </div>
@@ -378,7 +428,8 @@ const caption = computed(() => {
       <div class="explain">
         <div class="step-name">
           <span class="num">{{ s + 1 }}/{{ STEPS.length }}</span> {{ STEPS[s].name }}
-          <span v-if="caption" class="caption" :class="{ ok: s === 4 && calc.crtOk }">{{ caption }}</span>
+          <span v-if="caption" class="caption" :class="{ ok: s === 4 && corrected && calc.crtOk }"><template v-for="(part, k) in rich(caption)" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></span>
+          <button v-if="s === 4" class="replay" @click="replayCrt">↻ replay</button>
         </div>
         <p><template v-for="(part, k) in rich(STEPS[s].text)" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></p>
         <p class="hover"><template v-for="(part, k) in rich(hover || 'Hover a cell to see where its value comes from.')" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></p>
@@ -408,6 +459,7 @@ const caption = computed(() => {
   --accent: #2a78d6;
   --seq: #2a78d6;
   --good-text: #006300;
+  --good: #0ca30c;
   --cw: 60px;
 
   color: var(--ink);
@@ -425,6 +477,7 @@ html.dark .oz {
   --accent: #3987e5;
   --seq: #3987e5;
   --good-text: #3fc43f;
+  --good: #0ca30c;
 }
 .dim { color: var(--ink-3); font-weight: 400; }
 sup { font-size: 0.72em; line-height: 0; }
@@ -467,6 +520,7 @@ sup { font-size: 0.72em; line-height: 0; }
   overflow: hidden;
 }
 .plane.pending .cell { color: var(--ink-3); }
+.cell.settled { box-shadow: inset 0 0 0 1.5px var(--good); }
 .tag {
   position: absolute;
   top: -9px;
@@ -503,6 +557,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .num { color: var(--ink-3); font-weight: 400; font-size: 11px; }
 .caption { font-weight: 400; color: var(--ink-2); font-size: 12px; }
 .caption.ok { color: var(--good-text); font-weight: 600; }
+.replay { padding: 0 6px; font-weight: 400; }
 .hover { color: var(--ink-2); font-style: italic; font-size: 11.5px; min-height: 1.4em; font-family: var(--slidev-code-font-family, ui-monospace, monospace); font-style: normal; }
 .controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; color: var(--ink-2); font-size: 12px; }
 .controls label { display: flex; align-items: center; gap: 6px; }
