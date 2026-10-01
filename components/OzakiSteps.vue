@@ -238,11 +238,15 @@ const tintBits = (v: bigint, budget: number) => tint(v === 0n ? 0 : bitlen(v) / 
 
 const D = computed(() => Math.min(5, 44 / Math.max(1, N.value - 1)))
 const STACK_PAD = 44
+// The selected slice sits at the front and the rest follow it round in modulus
+// order, like cards cycled through a deck. Lifting a back slice to the top in
+// place would cover the slices that are meant to be in front of it.
 function planeStyle(t: number, expanded: boolean) {
-  const off = expanded ? t * D.value : 0
+  const pos = (t - sel.value + N.value) % N.value
+  const off = expanded ? pos * D.value : 0
   return {
     transform: `translate(${off}px, ${-off}px)`,
-    zIndex: t === sel.value ? 100 : N.value - t,
+    zIndex: N.value - pos,
   }
 }
 const aSliced = computed(() => s.value >= 2)
