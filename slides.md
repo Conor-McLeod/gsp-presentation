@@ -120,6 +120,20 @@ Spelled out: x = P/p_1 q_1 y_1 + P/p_2 q_2 y_2 + ... + P/p_N q_N y_N (mod P).
 
 ---
 
+# The CRT in action
+
+<CrtExplorer />
+
+<!--
+Each dial is one int8 modulus from par_gemmul8; the hand is the signed residue y_i, which is what fits in int8.
+
+Press reconstruct: the dot walks round the ring Z/P one term (P/p_i) q_i y_i at a time and always lands on x mod P.
+
+Whether that is x itself depends on P: try int64 max with N = 8 (wraps), then N = 9 (exact).
+-->
+
+---
+
 # Ozaki scheme II
 
 Uses the Chinese Remainder Theorem.
@@ -130,6 +144,25 @@ Uses the Chinese Remainder Theorem.
 
 <!--
 TODO: check these bullets; say why scheme II beats scheme I (GEMM count), and how many moduli are needed for FP64.
+-->
+
+---
+clicks: 5
+---
+
+# Ozaki scheme II, step by step
+
+<OzakiSteps :step="$clicks" />
+
+<!--
+A real 4x4 by 4x3 product, run through the same accurate-mode pipeline as par_gemmul8's seq::ozaki_gemm (ported from ozaki-numpy).
+
+1. FP64 inputs, spread over six decades.
+2. Each row of A and column of B gets its own power of two, chosen as large as the bit budget allows; then truncate. This is the only place we lose accuracy.
+3. Slice: residues mod each p_i, all int8.
+4. N independent int8 GEMMs, this is the expensive part and what we parallelise.
+5. CRT gives back A'B' exactly (see the CRT slides before).
+6. Undo the powers of two. Drag N: error falls ~4 bits per modulus until FP64's own limit.
 -->
 
 ---
@@ -175,6 +208,25 @@ Each MPI rank owns one tile of every matrix.
 
 <!--
 TODO: talk through the process grid (prow/pcol) and the local tile sizes.
+-->
+
+---
+clicks: 6
+---
+
+# How the tiles move
+
+<TileExchange :step="$clicks" />
+
+<!--
+Each panel is one GPU, laid out in its place on the 2x2 grid. The mini grids show which tiles of A, B and C that GPU holds; colour is the rank the tile belongs to, ticks are the int8 residue planes it holds, one per modulus.
+
+Clicks step through the par_ozaki stages. The toggle switches to ref_par_ozaki, which only has three stages.
+
+ref: swap FP64 tiles with row/column peers, then two full sequential Ozaki runs per rank.
+par: split the moduli, not the tiles. Expand locally, all-to-all the planes, one big GEMM per owned modulus, all-to-all the C tiles back, CRT locally.
+
+Click a rank to isolate its traffic in the all-to-all stages.
 -->
 
 ---
