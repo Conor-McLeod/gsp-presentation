@@ -77,7 +77,7 @@ TODO: finish "Nvidia will ..." and "To obtain high precision performance, ...".
 
 # Ozaki scheme II
 
-An algorithm for emulating high-precision matrix multiplication using low-precision operations.
+An algorithm for emulating high-precision matrix multiplication using low-precision operations, using the _Chinese Remainder Theorem_.
 
 - Split each matrix into slices small enough that their products are exact
 - Multiply the slices with low-precision GEMMs
@@ -85,20 +85,6 @@ An algorithm for emulating high-precision matrix multiplication using low-precis
 
 <!--
 TODO: check these bullets against how you want to present scheme I; add a diagram of the slicing.
--->
-
----
-
-# Ozaki scheme II
-
-Uses the Chinese Remainder Theorem.
-
-- Scale $A$ and $B$ to integer matrices $A'$, $B'$
-- Compute $C_i = A'B' \bmod m_i$ for pairwise-coprime moduli $m_i$
-- Reconstruct $A'B'$ from the $C_i$ with the CRT, then scale back
-
-<!--
-TODO: check these bullets; say why scheme II beats scheme I (GEMM count), and how many moduli are needed for FP64.
 -->
 
 ---
@@ -130,6 +116,20 @@ The modular inverse q_i is the number you multiply P/p_i by to get 1 mod p_i. It
 The system is N congruences with the same x on the left; each y_i is x mod p_i.
 
 Spelled out: x = P/p_1 q_1 y_1 + P/p_2 q_2 y_2 + ... + P/p_N q_N y_N (mod P).
+-->
+
+---
+
+# Ozaki scheme II
+
+Uses the Chinese Remainder Theorem.
+
+- Scale $A$ and $B$ to integer matrices $A'$, $B'$
+- Compute $C_i = A'B' \bmod m_i$ for pairwise-coprime moduli $m_i$
+- Reconstruct $A'B'$ from the $C_i$ with the CRT, then scale back
+
+<!--
+TODO: check these bullets; say why scheme II beats scheme I (GEMM count), and how many moduli are needed for FP64.
 -->
 
 ---
@@ -200,10 +200,7 @@ CUTLASS is .
 
 ---
 
-title: "Side quest: Cross-rank/run/version analysis pipeline with DuckDB"
----
-
-# Side quest: Cross-rank/run/version analysis pipeline with <img src="/svg/duckdb_inline_lightmode.svg" alt="DuckDB" class="inline-block h-12 align-middle dark:hidden" /><img src="/svg/duckdb_inline_darkmode.svg" alt="DuckDB" class="hidden h-12 align-middle dark:inline-block" />
+# Side quest: Cross-rank/run/version analysis pipeline with <img src="/svg/duckdb_inline_lightmode.svg" alt="DuckDB" class="inline h-12 align-middle" />
 
 <div class="flex justify-center">
 

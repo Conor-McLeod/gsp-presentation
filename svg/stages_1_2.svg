@@ -1,0 +1,334 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2637" viewBox="0 0 1600 2637">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6B7280"/></marker></defs>
+<rect width="1600" height="2637" fill="#FFFFFF"/>
+<text x="64.0" y="100.0" font-family="Inter, sans-serif" font-size="36" font-weight="700" fill="#1E1E1E" text-anchor="start">Stages 1–2 — scaling and moduli expansion</text>
+<text x="64.0" y="140.0" font-family="Inter, sans-serif" font-size="16" font-weight="400" fill="#555555" text-anchor="start">Everything here works on each rank's own A and B tiles (panel 2 of the tiling scheme). Stage 1 picks a power-of-two shift per row of A and per column of B, so the scaled,</text>
+<text x="64.0" y="163.2" font-family="Inter, sans-serif" font-size="16" font-weight="400" fill="#555555" text-anchor="start">truncated integers are small enough for the CRT with num_moduli moduli; it needs the row and column communicators and one small int8 GEMM. Stage 2 turns the scaled tiles into</text>
+<text x="64.0" y="186.4" font-family="Inter, sans-serif" font-size="16" font-weight="400" fill="#555555" text-anchor="start">one int8 residue plane per modulus, with no communication. par and par::async run the same code for both stages.</text>
+<rect x="64.0" y="238.4" width="1472.0" height="570.2" rx="12" fill="#F7F7F8" stroke="#E4E4E7" stroke-width="1"/>
+<text x="96.0" y="288.4" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#1E1E1E" text-anchor="start">1 · The steps on one rank</text>
+<text x="96.0" y="322.4" font-family="Inter, sans-serif" font-size="14" font-weight="400" fill="#333333" text-anchor="start">A row-wise and B column-wise, in the order the kernels run (src/par/par_scaling.cu). Circled numbers match the notes below.</text>
+<text x="96.0" y="383.9" font-family="JetBrains Mono, monospace" font-size="18" font-weight="700" fill="#1E1E1E" text-anchor="start">A</text>
+<rect x="126.0" y="346.9" width="112.0" height="62.0" rx="6" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+<text x="182.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#6B7280" text-anchor="middle">l_A (T)</text>
+<text x="182.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_kA</text>
+<line x1="242.0" y1="377.9" x2="260.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="264.0" y="346.9" width="124.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="270.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">①</text>
+<text x="326.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">row amax</text>
+<text x="326.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">per tile row</text>
+<line x1="392.0" y1="377.9" x2="410.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="414.0" y="346.9" width="124.0" height="62.0" rx="6" fill="#FEF9C3" stroke="#A16207" stroke-width="1.5"/>
+<text x="420.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#A16207" text-anchor="start">②</text>
+<text x="476.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#A16207" text-anchor="middle">max-reduce</text>
+<text x="476.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">row comm</text>
+<line x1="542.0" y1="377.9" x2="560.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="564.0" y="346.9" width="104.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="616.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">shiftA</text>
+<text x="616.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">from amax</text>
+<line x1="672.0" y1="377.9" x2="690.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="694.0" y="346.9" width="126.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="700.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">③</text>
+<text x="757.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">A_bound</text>
+<text x="757.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">int8 bound</text>
+<line x1="824.0" y1="377.9" x2="842.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="846.0" y="346.9" width="150.0" height="146.0" rx="6" fill="#1F2937"/>
+<text x="852.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#FFFFFF" text-anchor="start">④</text>
+<text x="921.0" y="411.9" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">bound GEMM</text>
+<text x="921.0" y="426.9" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#D1D5DB" text-anchor="middle">A_bound · B_bound</text>
+<text x="921.0" y="439.9" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#D1D5DB" text-anchor="middle">→ C_hi int32</text>
+<line x1="1000.0" y1="377.9" x2="1018.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1022.0" y="346.9" width="150.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="1028.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">⑤</text>
+<text x="1097.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">C_hi row amax</text>
+<text x="1097.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">+ max-reduce, row</text>
+<line x1="1176.0" y1="377.9" x2="1194.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1198.0" y="346.9" width="124.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="1204.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">⑥</text>
+<text x="1260.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">refine</text>
+<text x="1260.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">shiftA</text>
+<line x1="1326.0" y1="377.9" x2="1344.0" y2="377.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1348.0" y="346.9" width="120.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="1354.0" y="362.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">⑦</text>
+<text x="1408.0" y="376.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">A_core</text>
+<text x="1408.0" y="391.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">trunc(A·2^shift)</text>
+<text x="96.0" y="467.9" font-family="JetBrains Mono, monospace" font-size="18" font-weight="700" fill="#1E1E1E" text-anchor="start">B</text>
+<rect x="126.0" y="430.9" width="112.0" height="62.0" rx="6" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+<text x="182.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#6B7280" text-anchor="middle">l_B (T)</text>
+<text x="182.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_kB × l_n</text>
+<line x1="242.0" y1="461.9" x2="260.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="264.0" y="430.9" width="124.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="270.0" y="446.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">①</text>
+<text x="326.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">col amax</text>
+<text x="326.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">per tile column</text>
+<line x1="392.0" y1="461.9" x2="410.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="414.0" y="430.9" width="124.0" height="62.0" rx="6" fill="#FEF9C3" stroke="#A16207" stroke-width="1.5"/>
+<text x="420.0" y="446.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#A16207" text-anchor="start">②</text>
+<text x="476.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#A16207" text-anchor="middle">max-reduce</text>
+<text x="476.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">col comm</text>
+<line x1="542.0" y1="461.9" x2="560.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="564.0" y="430.9" width="104.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="616.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">shiftB</text>
+<text x="616.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">from amax</text>
+<line x1="672.0" y1="461.9" x2="690.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="694.0" y="430.9" width="126.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="700.0" y="446.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">③</text>
+<text x="757.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">B_bound</text>
+<text x="757.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">int8 bound</text>
+<line x1="824.0" y1="461.9" x2="842.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="1000.0" y1="461.9" x2="1018.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1022.0" y="430.9" width="150.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="1028.0" y="446.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">⑤</text>
+<text x="1097.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">C_hi col amax</text>
+<text x="1097.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">+ max-reduce, col</text>
+<line x1="1176.0" y1="461.9" x2="1194.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1198.0" y="430.9" width="124.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="1204.0" y="446.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">⑥</text>
+<text x="1260.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">refine</text>
+<text x="1260.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">shiftB</text>
+<line x1="1326.0" y1="461.9" x2="1344.0" y2="461.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1348.0" y="430.9" width="120.0" height="62.0" rx="6" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="1354.0" y="446.9" font-family="Inter, sans-serif" font-size="13" font-weight="500" fill="#4338CA" text-anchor="start">⑦</text>
+<text x="1408.0" y="460.4" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">B_core</text>
+<text x="1408.0" y="475.4" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">trunc(B·2^shift)</text>
+<line x1="1408.0" y1="492.9" x2="1408.0" y2="516.9" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1470.0,377.9 H1490.0 V547.9 H1472.0" fill="none" stroke="#9CA3AF" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1168.0" y="518.9" width="300.0" height="58.0" rx="6" fill="#ECFDF5" stroke="#047857" stroke-width="1.5"/>
+<text x="1318.0" y="539.9" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#047857" text-anchor="middle">stage 2: moduli_expand_local</text>
+<text x="1318.0" y="554.9" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">A_core → l_A_lo[0 … num_moduli−1]</text>
+<text x="1318.0" y="567.9" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">B_core → l_B_lo[0 … num_moduli−1]</text>
+<text x="1156.0" y="552.9" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#047857" text-anchor="end">(panel 4)</text>
+<rect x="96.0" y="598.9" width="16.0" height="16.0" rx="3" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.2"/>
+<text x="118.0" y="611.9" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">input tile</text>
+<rect x="218.0" y="598.9" width="16.0" height="16.0" rx="3" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.2"/>
+<text x="240.0" y="611.9" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">local kernel</text>
+<rect x="354.0" y="598.9" width="16.0" height="16.0" rx="3" fill="#FEF9C3" stroke="#A16207" stroke-width="1.2"/>
+<text x="376.0" y="611.9" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">NCCL max-reduce</text>
+<rect x="511.0" y="598.9" width="16.0" height="16.0" rx="3" fill="#1F2937"/>
+<text x="533.0" y="611.9" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">int8 GEMM (cuBLAS)</text>
+<rect x="689.0" y="598.9" width="16.0" height="16.0" rx="3" fill="#ECFDF5" stroke="#047857" stroke-width="1.2"/>
+<text x="711.0" y="611.9" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">stage 2</text>
+<text x="96.0" y="645.9" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">① ② A tile holds only part of each row of A (and a B tile part of each column of B), so the local amax is max-reduced across the ranks holding the rest (panel 2). shift = max_ufp − ilogb(amax).</text>
+<text x="96.0" y="674.6" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">③ extract_bound writes an int8 upper bound of |A|·2^shift into l_A_lo (and of B into l_B_lo), k-major with k padded to a multiple of 256. It occupies plane 0 until stage 2 overwrites it with residues.</text>
+<text x="96.0" y="703.4" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">④ The bound GEMM estimates how large each entry of the scaled product can get. It is the only step in stages 1–2 that needs another rank's data (panel 3). C_hi is zeroed first.</text>
+<text x="96.0" y="732.1" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">⑤ ⑥ Row maxima of C_hi refine shiftA and column maxima refine shiftB, again reduced over the row / column communicator, so every entry of the product fits the CRT range of num_moduli moduli.</text>
+<text x="96.0" y="760.9" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">⑦ trunc_core applies the final shifts and truncates: A_core / B_core hold the integer-valued scaled tiles, k-major, leading dimension padding(l_kA) / padding(l_kB).</text>
+<rect x="64.0" y="840.6" width="1472.0" height="428.0" rx="12" fill="#F7F7F8" stroke="#E4E4E7" stroke-width="1"/>
+<text x="96.0" y="890.6" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#1E1E1E" text-anchor="start">2 · Why the reductions use the row and column communicators</text>
+<text x="96.0" y="924.6" font-family="Inter, sans-serif" font-size="14" font-weight="400" fill="#333333" text-anchor="start">A row of A (and of C_hi) is split across the two ranks in its grid row; a column of B (and of C_hi) across the two ranks in its grid column. The shaded band is one such row or column.</text>
+<text x="136.0" y="967.1" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#1E1E1E" text-anchor="start">A</text>
+<text x="159.0" y="967.1" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#666666" text-anchor="start">g_m × g_k</text>
+<rect x="136.0" y="981.1" width="130.0" height="80.0" rx="0" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.5"/>
+<text x="201.0" y="1019.1" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#2563EB" text-anchor="middle">rank 0</text>
+<text x="201.0" y="1035.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_kA</text>
+<rect x="266.0" y="981.1" width="130.0" height="80.0" rx="0" fill="#D1FAE5" stroke="#059669" stroke-width="1.5"/>
+<text x="331.0" y="1019.1" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#059669" text-anchor="middle">rank 2</text>
+<text x="331.0" y="1035.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_kA</text>
+<rect x="136.0" y="1061.2" width="130.0" height="80.0" rx="0" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="201.0" y="1099.2" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#D97706" text-anchor="middle">rank 1</text>
+<text x="201.0" y="1115.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_kA</text>
+<rect x="266.0" y="1061.2" width="130.0" height="80.0" rx="0" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="331.0" y="1099.2" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="middle">rank 3</text>
+<text x="331.0" y="1115.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_kA</text>
+<rect x="130.0" y="1045.2" width="272.0" height="10.0" rx="3" fill="#DC2626" fill-opacity="0.35" stroke="#DC2626" stroke-width="1"/>
+<text x="266.0" y="1163.2" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#DC2626" text-anchor="middle">row of A → ranks 0, 2: row comm</text>
+<text x="516.0" y="967.1" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#1E1E1E" text-anchor="start">B</text>
+<text x="539.0" y="967.1" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#666666" text-anchor="start">g_k × g_n</text>
+<rect x="516.0" y="981.1" width="130.0" height="80.0" rx="0" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.5"/>
+<text x="581.0" y="1019.1" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#2563EB" text-anchor="middle">rank 0</text>
+<text x="581.0" y="1035.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_kB × l_n</text>
+<rect x="646.0" y="981.1" width="130.0" height="80.0" rx="0" fill="#D1FAE5" stroke="#059669" stroke-width="1.5"/>
+<text x="711.0" y="1019.1" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#059669" text-anchor="middle">rank 2</text>
+<text x="711.0" y="1035.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_kB × l_n</text>
+<rect x="516.0" y="1061.2" width="130.0" height="80.0" rx="0" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="581.0" y="1099.2" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#D97706" text-anchor="middle">rank 1</text>
+<text x="581.0" y="1115.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_kB × l_n</text>
+<rect x="646.0" y="1061.2" width="130.0" height="80.0" rx="0" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="711.0" y="1099.2" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="middle">rank 3</text>
+<text x="711.0" y="1115.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_kB × l_n</text>
+<rect x="630.4" y="979.1" width="10.0" height="164.0" rx="3" fill="#0891B2" fill-opacity="0.35" stroke="#0891B2" stroke-width="1"/>
+<text x="646.0" y="1163.2" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#0891B2" text-anchor="middle">column of B → ranks 0, 1: col comm</text>
+<text x="896.0" y="967.1" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#1E1E1E" text-anchor="start">C_hi</text>
+<text x="958.0" y="967.1" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#666666" text-anchor="start">g_m × g_n</text>
+<rect x="896.0" y="981.1" width="130.0" height="80.0" rx="0" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.5"/>
+<text x="961.0" y="1019.1" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#2563EB" text-anchor="middle">rank 0</text>
+<text x="961.0" y="1035.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_n</text>
+<rect x="1026.0" y="981.1" width="130.0" height="80.0" rx="0" fill="#D1FAE5" stroke="#059669" stroke-width="1.5"/>
+<text x="1091.0" y="1019.1" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#059669" text-anchor="middle">rank 2</text>
+<text x="1091.0" y="1035.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_n</text>
+<rect x="896.0" y="1061.2" width="130.0" height="80.0" rx="0" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="961.0" y="1099.2" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#D97706" text-anchor="middle">rank 1</text>
+<text x="961.0" y="1115.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_n</text>
+<rect x="1026.0" y="1061.2" width="130.0" height="80.0" rx="0" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="1091.0" y="1099.2" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="middle">rank 3</text>
+<text x="1091.0" y="1115.2" font-family="JetBrains Mono, monospace" font-size="10" font-weight="400" fill="#444444" text-anchor="middle">l_m × l_n</text>
+<rect x="890.0" y="1125.2" width="272.0" height="10.0" rx="3" fill="#DC2626" fill-opacity="0.35" stroke="#DC2626" stroke-width="1"/>
+<text x="1026.0" y="1163.2" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#DC2626" text-anchor="middle"></text>
+<rect x="1140.4" y="979.1" width="10.0" height="164.0" rx="3" fill="#0891B2" fill-opacity="0.35" stroke="#0891B2" stroke-width="1"/>
+<text x="1026.0" y="1163.2" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#374151" text-anchor="middle">rows: row comm · columns: col comm</text>
+<text x="1246.0" y="991.1" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#DC2626" text-anchor="start">row comm {0, 2} and {1, 3}</text>
+<text x="1246.0" y="1011.1" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start">max over l_m values:</text>
+<text x="1246.0" y="1031.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start">  <tspan font-family="Inter, sans-serif">②</tspan> amax of A's rows</text>
+<text x="1246.0" y="1051.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start">  <tspan font-family="Inter, sans-serif">⑤</tspan> amax of C_hi's rows</text>
+<text x="1246.0" y="1071.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start"></text>
+<text x="1246.0" y="1091.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#0891B2" text-anchor="start">col comm {0, 1} and {2, 3}</text>
+<text x="1246.0" y="1111.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start">max over l_n values:</text>
+<text x="1246.0" y="1131.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start">  <tspan font-family="Inter, sans-serif">②</tspan> amax of B's columns</text>
+<text x="1246.0" y="1151.2" font-family="JetBrains Mono, monospace" font-size="13" font-weight="400" fill="#333333" text-anchor="start">  <tspan font-family="Inter, sans-serif">⑤</tspan> amax of C_hi's columns</text>
+<text x="96.0" y="1192.2" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">Each reduction is an in-place NCCL max over a vector of per-row (l_m) or per-column (l_n) maxima on a 2-rank communicator: rows need no column communication and vice versa.</text>
+<text x="96.0" y="1220.9" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">After ② and ⑥ both ranks in a grid row hold identical shiftA for their rows, and both ranks in a grid column identical shiftB, so the tiles they later exchange are scaled consistently.</text>
+<rect x="64.0" y="1300.7" width="1472.0" height="652.4" rx="12" fill="#F7F7F8" stroke="#E4E4E7" stroke-width="1"/>
+<text x="96.0" y="1350.7" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#1E1E1E" text-anchor="start">3 · The bound GEMM ④: two K-strips with peer exchanges</text>
+<text x="96.0" y="1384.7" font-family="Inter, sans-serif" font-size="14" font-weight="400" fill="#333333" text-anchor="start">matmult::two_round_peer_gemm_i8 (include/par/par_matmult.hpp). Rank (prow, pcol) computes its C_hi tile as the sum of two K-strips: C_hi = A(prow, 0)·B(0, pcol) + A(prow, 1)·B(1, pcol). It</text>
+<text x="96.0" y="1405.0" font-family="Inter, sans-serif" font-size="14" font-weight="400" fill="#333333" text-anchor="start">holds one operand of each strip; the other comes from a peer.</text>
+<text x="96.0" y="1439.5" font-family="Inter, sans-serif" font-size="14" font-weight="500" fill="#333333" text-anchor="start">Exchange (one NCCL sendrecv each, overlapped on their own streams): A_bound tile ↔ row peer (rank ^ 2) into packA_recv; B_bound tile ↔ col peer (rank ^ 1) into packB_recv.</text>
+<rect x="96.0" y="1468.0" width="660.0" height="150.0" rx="10" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5"/>
+<text x="114.0" y="1496.0" font-family="JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#2563EB" text-anchor="start">rank 0  (prow 0, pcol 0)</text>
+<text x="114.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">1.</text>
+<text x="140.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 0:</text>
+<text x="246.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#2563EB" text-anchor="start">A(0,0)</text>
+<text x="246.0" y="1544.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#2563EB" text-anchor="start">local</text>
+<text x="318.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="340.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#2563EB" text-anchor="start">B(0,0)</text>
+<text x="340.0" y="1544.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#2563EB" text-anchor="start">local</text>
+<text x="446.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 0</text>
+<text x="596.0" y="1528.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: none: both local</text>
+<text x="114.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">2.</text>
+<text x="140.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 1:</text>
+<text x="246.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#059669" text-anchor="start">A(0,1)</text>
+<text x="246.0" y="1586.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#059669" text-anchor="start">from row peer 2</text>
+<text x="318.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="340.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#D97706" text-anchor="start">B(1,0)</text>
+<text x="340.0" y="1586.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#D97706" text-anchor="start">from col peer 1</text>
+<text x="446.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 1 (accumulate)</text>
+<text x="596.0" y="1570.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: A and B</text>
+<rect x="96.0" y="1642.0" width="660.0" height="150.0" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.5"/>
+<text x="114.0" y="1670.0" font-family="JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#D97706" text-anchor="start">rank 1  (prow 1, pcol 0)</text>
+<text x="114.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">1.</text>
+<text x="140.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 0:</text>
+<text x="246.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#D97706" text-anchor="start">A(1,0)</text>
+<text x="246.0" y="1718.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#D97706" text-anchor="start">local</text>
+<text x="318.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="340.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#2563EB" text-anchor="start">B(0,0)</text>
+<text x="340.0" y="1718.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#2563EB" text-anchor="start">from col peer 0</text>
+<text x="446.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 0</text>
+<text x="596.0" y="1702.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: B from col peer</text>
+<text x="114.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">2.</text>
+<text x="140.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 1:</text>
+<text x="246.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="start">A(1,1)</text>
+<text x="246.0" y="1760.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#7C3AED" text-anchor="start">from row peer 3</text>
+<text x="318.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="340.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#D97706" text-anchor="start">B(1,0)</text>
+<text x="340.0" y="1760.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#D97706" text-anchor="start">local</text>
+<text x="446.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 1 (accumulate)</text>
+<text x="596.0" y="1744.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: A from row peer</text>
+<rect x="796.0" y="1468.0" width="660.0" height="150.0" rx="10" fill="#FFFFFF" stroke="#059669" stroke-width="1.5"/>
+<text x="814.0" y="1496.0" font-family="JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#059669" text-anchor="start">rank 2  (prow 0, pcol 1)</text>
+<text x="814.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">1.</text>
+<text x="840.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 0:</text>
+<text x="946.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#2563EB" text-anchor="start">A(0,0)</text>
+<text x="946.0" y="1544.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#2563EB" text-anchor="start">from row peer 0</text>
+<text x="1018.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="1040.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#059669" text-anchor="start">B(0,1)</text>
+<text x="1040.0" y="1544.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#059669" text-anchor="start">local</text>
+<text x="1146.0" y="1528.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 0</text>
+<text x="1296.0" y="1528.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: A from row peer</text>
+<text x="814.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">2.</text>
+<text x="840.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 1:</text>
+<text x="946.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#059669" text-anchor="start">A(0,1)</text>
+<text x="946.0" y="1586.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#059669" text-anchor="start">local</text>
+<text x="1018.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="1040.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="start">B(1,1)</text>
+<text x="1040.0" y="1586.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#7C3AED" text-anchor="start">from col peer 3</text>
+<text x="1146.0" y="1570.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 1 (accumulate)</text>
+<text x="1296.0" y="1570.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: B from col peer</text>
+<rect x="796.0" y="1642.0" width="660.0" height="150.0" rx="10" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="814.0" y="1670.0" font-family="JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#7C3AED" text-anchor="start">rank 3  (prow 1, pcol 1)</text>
+<text x="814.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">1.</text>
+<text x="840.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 1:</text>
+<text x="946.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="start">A(1,1)</text>
+<text x="946.0" y="1718.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#7C3AED" text-anchor="start">local</text>
+<text x="1018.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="1040.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#7C3AED" text-anchor="start">B(1,1)</text>
+<text x="1040.0" y="1718.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#7C3AED" text-anchor="start">local</text>
+<text x="1146.0" y="1702.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 0</text>
+<text x="1296.0" y="1702.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: none: both local</text>
+<text x="814.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#374151" text-anchor="start">2.</text>
+<text x="840.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#374151" text-anchor="start">k-strip 0:</text>
+<text x="946.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#D97706" text-anchor="start">A(1,0)</text>
+<text x="946.0" y="1760.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#D97706" text-anchor="start">from row peer 1</text>
+<text x="1018.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#374151" text-anchor="start">·</text>
+<text x="1040.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="14" font-weight="700" fill="#059669" text-anchor="start">B(0,1)</text>
+<text x="1040.0" y="1760.0" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#059669" text-anchor="start">from col peer 2</text>
+<text x="1146.0" y="1744.0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="400" fill="#555555" text-anchor="start">β = 1 (accumulate)</text>
+<text x="1296.0" y="1744.0" font-family="Inter, sans-serif" font-size="12" font-weight="400" fill="#555555" text-anchor="start">waits: A and B</text>
+<text x="96.0" y="1829.0" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">The k-strips line up because A's k split (by pcol) and B's k split (by prow) use the same rule: strip 0 is the first k block (which takes the remainder) in both, so the two operands of each strip have the</text>
+<text x="96.0" y="1847.8" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">same k extent.</text>
+<text x="96.0" y="1876.6" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">Diagonal ranks 0 and 3 start one strip from purely local data while the exchanges are in flight; the edge ranks 1 and 2 need one peer tile for each strip, so they wait before both.</text>
+<text x="96.0" y="1905.3" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">The GEMM is on the int8 bounds, not on residues: it runs once, at tile size (l_m × l_n × l_k), whatever num_moduli is.</text>
+<rect x="64.0" y="1985.1" width="1472.0" height="587.9" rx="12" fill="#F7F7F8" stroke="#E4E4E7" stroke-width="1"/>
+<text x="96.0" y="2035.1" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#1E1E1E" text-anchor="start">4 · Stage 2: moduli expand</text>
+<text x="96.0" y="2069.1" font-family="Inter, sans-serif" font-size="14" font-weight="400" fill="#333333" text-anchor="start">ozaki::moduli_expand, called by moduli_expand_local (src/par/par_moduli.cu). Each element of A_core becomes num_moduli int8 residues, one per modulus p_i, written to plane i of l_A_lo. Same for</text>
+<text x="96.0" y="2089.4" font-family="Inter, sans-serif" font-size="14" font-weight="400" fill="#333333" text-anchor="start">B. Example: num_moduli = 16.</text>
+<text x="116.0" y="2135.8" font-family="JetBrains Mono, monospace" font-size="16" font-weight="700" fill="#1E1E1E" text-anchor="start">A_core</text>
+<text x="116.0" y="2153.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#666666" text-anchor="start">padding(l_kA) × l_m, k-major</text>
+<rect x="116.0" y="2165.8" width="150.0" height="170.0" rx="4" fill="#EEF2FF" stroke="#4338CA" stroke-width="1.5"/>
+<text x="191.0" y="2250.8" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#4338CA" text-anchor="middle">integer-valued</text>
+<text x="191.0" y="2266.8" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#4338CA" text-anchor="middle">scaled tile</text>
+<line x1="286.0" y1="2250.8" x2="436.0" y2="2250.8" stroke="#6B7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="361.0" y="2238.8" font-family="JetBrains Mono, monospace" font-size="12" font-weight="500" fill="#374151" text-anchor="middle">mod p_i, i = 0…15</text>
+<text x="361.0" y="2272.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#666666" text-anchor="middle">one kernel, all planes</text>
+<text x="466.0" y="2135.8" font-family="JetBrains Mono, monospace" font-size="16" font-weight="700" fill="#1E1E1E" text-anchor="start">l_A_lo[i]</text>
+<text x="466.0" y="2153.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#666666" text-anchor="start">16 int8 planes, each padding(l_kA) × l_m, stride l_A_plane_elems; colour = rank that owns modulus i</text>
+<rect x="466.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.2"/>
+<text x="489.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#2563EB" text-anchor="middle">0</text>
+<rect x="520.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.2"/>
+<text x="543.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#2563EB" text-anchor="middle">1</text>
+<rect x="574.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.2"/>
+<text x="597.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#2563EB" text-anchor="middle">2</text>
+<rect x="628.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.2"/>
+<text x="651.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#2563EB" text-anchor="middle">3</text>
+<rect x="682.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#FEF3C7" stroke="#D97706" stroke-width="1.2"/>
+<text x="705.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#D97706" text-anchor="middle">4</text>
+<rect x="736.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#FEF3C7" stroke="#D97706" stroke-width="1.2"/>
+<text x="759.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#D97706" text-anchor="middle">5</text>
+<rect x="790.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#FEF3C7" stroke="#D97706" stroke-width="1.2"/>
+<text x="813.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#D97706" text-anchor="middle">6</text>
+<rect x="844.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#FEF3C7" stroke="#D97706" stroke-width="1.2"/>
+<text x="867.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#D97706" text-anchor="middle">7</text>
+<rect x="898.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#D1FAE5" stroke="#059669" stroke-width="1.2"/>
+<text x="921.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#059669" text-anchor="middle">8</text>
+<rect x="952.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#D1FAE5" stroke="#059669" stroke-width="1.2"/>
+<text x="975.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#059669" text-anchor="middle">9</text>
+<rect x="1006.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#D1FAE5" stroke="#059669" stroke-width="1.2"/>
+<text x="1029.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#059669" text-anchor="middle">10</text>
+<rect x="1060.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#D1FAE5" stroke="#059669" stroke-width="1.2"/>
+<text x="1083.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#059669" text-anchor="middle">11</text>
+<rect x="1114.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.2"/>
+<text x="1137.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#7C3AED" text-anchor="middle">12</text>
+<rect x="1168.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.2"/>
+<text x="1191.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#7C3AED" text-anchor="middle">13</text>
+<rect x="1222.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.2"/>
+<text x="1245.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#7C3AED" text-anchor="middle">14</text>
+<rect x="1276.0" y="2165.8" width="46.0" height="170.0" rx="3" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.2"/>
+<text x="1299.0" y="2255.8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#7C3AED" text-anchor="middle">15</text>
+<line x1="466.0" y1="2347.8" x2="674.0" y2="2347.8" stroke="#2563EB" stroke-width="2"/>
+<text x="570.0" y="2365.8" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#2563EB" text-anchor="middle">moduli 0–3</text>
+<text x="570.0" y="2381.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#444444" text-anchor="middle">on rank 0: kept (self tile)</text>
+<line x1="682.0" y1="2347.8" x2="890.0" y2="2347.8" stroke="#D97706" stroke-width="2"/>
+<text x="786.0" y="2365.8" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#D97706" text-anchor="middle">moduli 4–7</text>
+<text x="786.0" y="2381.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#444444" text-anchor="middle">on rank 0: sent to rank 1</text>
+<line x1="898.0" y1="2347.8" x2="1106.0" y2="2347.8" stroke="#059669" stroke-width="2"/>
+<text x="1002.0" y="2365.8" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#059669" text-anchor="middle">moduli 8–11</text>
+<text x="1002.0" y="2381.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#444444" text-anchor="middle">on rank 0: sent to rank 2</text>
+<line x1="1114.0" y1="2347.8" x2="1322.0" y2="2347.8" stroke="#7C3AED" stroke-width="2"/>
+<text x="1218.0" y="2365.8" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="#7C3AED" text-anchor="middle">moduli 12–15</text>
+<text x="1218.0" y="2381.8" font-family="Inter, sans-serif" font-size="11" font-weight="400" fill="#444444" text-anchor="middle">on rank 0: sent to rank 3</text>
+<rect x="462.0" y="2161.8" width="54.0" height="178.0" rx="4" fill="none" stroke="#374151" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="489.0" y="2415.8" font-family="Inter, sans-serif" font-size="10" font-weight="400" fill="#374151" text-anchor="start">plane 0 held the ③ bounds</text>
+<text x="96.0" y="2448.8" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">Every rank expands its own tile for all num_moduli moduli, though it keeps only its own share: stage 3 then sends plane range [q_begin, q_begin + q_count) of the tile to rank q (panel 3 of the tiling scheme),</text>
+<text x="96.0" y="2467.7" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">so the colours here are the owners from dist::moduli_range.</text>
+<text x="96.0" y="2496.4" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">No communication in stage 2. The planes keep A_core's k-major layout and padding, which is why stage 3's unpack drops the k-padding when it places a tile into the full A_lo[j] plane.</text>
+<text x="96.0" y="2525.2" font-family="Inter, sans-serif" font-size="13" font-weight="400" fill="#333333" text-anchor="start">l_A_lo is also where ③ put the int8 bound tile; stage 2 overwrites it. B is identical with l_B_lo, padding(l_kB) × l_n planes (written four int8 at a time as char4).</text>
+</svg>
+
