@@ -49,7 +49,9 @@ TODO: finish these two sentences; add a source for the spending figure.
 
 ---
 
-# Motivation: the gap is widening
+# Motivation
+
+NVIDIA hardware increasingly favours low precision
 
 <img src="./plots/nvidia_precision.png" alt="Nvidia flagship GPUs: low-precision tensor throughput versus native FP64, 2020 to 2026" class="mt-4 w-full bg-white rounded p-2" />
 
