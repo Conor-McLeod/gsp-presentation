@@ -93,7 +93,7 @@ TODO: check these bullets against how you want to present scheme I; add a diagra
 
 Let $x \in \mathbb{Z}$, and let $p_1, \dots, p_N \in \mathbb{N}_{\ge 2}$ be pairwise coprime with $\mathcal{P} := \prod_{i=1}^{N} p_i$.
 
-- Let $q_i \in \mathbb{N}$ be the modular inverse of $\mathcal{P}/p_i$, i.e. $\frac{\mathcal{P}}{p_i}\, q_i \equiv 1 \pmod{p_i}$
+- Let $q_i \in \mathbb{N}$ be the modular inverse of $\mathcal{P}/p_i$, such that $\frac{\mathcal{P}}{p_i}\, q_i \equiv 1 \pmod{p_i}$
 - Suppose $x$ is known only through its residues:
 
 $$
@@ -106,6 +106,8 @@ $$
 x \equiv \sum_{i=1}^{N} \frac{\mathcal{P}}{p_i}\, q_i\, y_i \pmod{\mathcal{P}}
 $$
 
+- This is a **weighted sum** of the residues: each $y_i$ gets a fixed weight $\frac{\mathcal{P}}{p_i}\, q_i$ that depends only on the moduli
+
 <!--
 N pairwise coprime moduli, each at least 2; their product is P.
 
@@ -116,6 +118,54 @@ The modular inverse q_i is the number you multiply P/p_i by to get 1 mod p_i. It
 The system is N congruences with the same x on the left; each y_i is x mod p_i.
 
 Spelled out: x = P/p_1 q_1 y_1 + P/p_2 q_2 y_2 + ... + P/p_N q_N y_N (mod P).
+
+The weights are where the work happens: the residues change with x, the weights never do. Next slide: why these particular numbers.
+-->
+
+---
+
+# Why the weights work
+
+Call $e_i := \frac{\mathcal{P}}{p_i}\, q_i$ the $i$-th weight. Each factor has one job:
+
+- $\frac{\mathcal{P}}{p_i}$ contains every **other** modulus, so $e_i \equiv 0 \pmod{p_j}$ for all $j \ne i$
+- $q_i$ rescales it so that $e_i \equiv 1 \pmod{p_i}$
+
+So $e_i$ is a **switch**: $1$ through modulus $p_i$, $0$ through all the others. Reducing $\sum_i e_i\, y_i$ mod $p_j$ kills every term but $e_j y_j \equiv y_j$.
+
+<div class="grid grid-cols-2 gap-8 mt-4 text-sm">
+<div>
+
+| $p = (3, 5, 7)$, $\mathcal{P} = 105$ | $\bmod 3$ | $\bmod 5$ | $\bmod 7$ |
+|---|:-:|:-:|:-:|
+| $e_1 = 35 \cdot 2 = 70$ | $1$ | $0$ | $0$ |
+| $e_2 = 21 \cdot 1 = 21$ | $0$ | $1$ | $0$ |
+| $e_3 = 15 \cdot 1 = 15$ | $0$ | $0$ | $1$ |
+
+</div>
+<div>
+
+$x = 52$ has residues $y = (1, 2, 3)$:
+
+$$
+70 \cdot 1 + 21 \cdot 2 + 15 \cdot 3 = 157 \equiv 52 \pmod{105}
+$$
+
+The weights depend only on the moduli, so they are precomputed once (`qPi` in par_gemmul8).
+
+</div>
+</div>
+
+<!--
+Think of the residues (y_1, ..., y_N) as coordinates of x. The weights are the unit vectors in those coordinates: e_1 looks like (1, 0, 0), e_2 like (0, 1, 0), and so on. x is then just y_1 e_1 + y_2 e_2 + ..., exactly like writing a vector in the standard basis.
+
+Same idea as Lagrange interpolation: each basis polynomial is 1 at its own node and 0 at the others, so the sum hits every data point.
+
+Why P/p_i: it is the product of all the moduli except p_i, so it is divisible by every p_j with j != i. That gives the zeros. It is coprime to p_i, so it has an inverse q_i mod p_i; multiplying by q_i turns its residue mod p_i into 1 without disturbing the zeros.
+
+Example: 35 = 5 * 7 is 2 mod 3; the inverse of 2 mod 3 is 2, so e_1 = 70. 21 = 3 * 7 is already 1 mod 5, and 15 = 3 * 5 is already 1 mod 7.
+
+The sum is only determined mod P: adding any multiple of P keeps every residue the same. That is why we reduce mod P at the end, and why x must fit in P (the next slide).
 -->
 
 ---
