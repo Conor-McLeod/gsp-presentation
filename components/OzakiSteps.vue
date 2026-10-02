@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 // Ozaki scheme II on a small matrix, step by step. A port of the accurate-mode
@@ -180,11 +182,11 @@ const calc = computed(() => {
 
 const STEPS = [
   { name: 'FP64 inputs', text: 'Entries span six orders of magnitude.' },
-  { name: 'Scale & truncate', text: 'Scale each row of A and column of B by a power of two, then truncate to integers: A′ = trunc(diag(μ)·A), B′ = trunc(B·diag(ν)). The powers are as large as possible while keeping every |A′B′| < 𝒫/2. Truncation is the only rounding step.' },
-  { name: 'Slice', text: 'For each modulus, A′ᵢ = A′ mod pᵢ (signed). N integer matrices become N int8 slices each.' },
-  { name: 'N int8 GEMMs', text: 'Cᵢ = A′ᵢ·B′ᵢ mod pᵢ, one int8 tensor-core GEMM per modulus. They are independent: this is the work par_gemmul8 distributes.' },
-  { name: 'CRT', text: 'Direct CRT reconstruction: weight each slice by wᵢ = (𝒫/pᵢ)·qᵢ, which is ≡ 1 mod pᵢ and ≡ 0 mod every other modulus, and add. The N terms are independent, one fma each per entry. The sum S is far outside [−𝒫/2, 𝒫/2); one correction S − 𝒫·round(S/𝒫) brings it back, and there it equals A′B′ exactly.' },
-  { name: 'Unscale', text: 'Undo the powers of two: C = diag(μ)^{−1}·C″·diag(ν)^{−1}.' },
+  { name: 'Scale & truncate', text: String.raw`Scale each row of $A$ and column of $B$ by a power of two, then truncate to integers: $A' = \operatorname{trunc}(\operatorname{diag}(\mu)\,A)$, $B' = \operatorname{trunc}(B\,\operatorname{diag}(\nu))$. The powers are as large as possible while keeping every $|A'B'| < \mathcal{P}/2$, so they grow with $N$: each extra modulus buys about 4 more bits per factor. Truncation is the only rounding step.` },
+  { name: 'Slice', text: String.raw`For each modulus, $A'_i = A' \bmod p_i$ (signed): $N$ int8 slices of each input. $A'$ itself depends on $N$ through $\mathcal{P}$, so changing $N$ changes every slice, even for a modulus that was already there.` },
+  { name: 'N int8 GEMMs', text: String.raw`$C_i = A'_i B'_i \bmod p_i$, one int8 tensor-core GEMM per modulus. They are independent: this is the work par_gemmul8 distributes.` },
+  { name: 'CRT', text: String.raw`Direct CRT reconstruction: weight each slice by $w_i = (\mathcal{P}/p_i)\,q_i$, which is $\equiv 1 \pmod{p_i}$ and $\equiv 0$ mod every other modulus, and add. The $N$ terms are independent, one fma each per entry. The sum $S$ is far outside $[-\mathcal{P}/2, \mathcal{P}/2)$; one correction $S - \mathcal{P}\,\operatorname{round}(S/\mathcal{P})$ brings it back, and there it equals $A'B'$ exactly.` },
+  { name: 'Unscale', text: String.raw`Undo the powers of two: $C = \operatorname{diag}(\mu)^{-1}\,C''\,\operatorname{diag}(\nu)^{-1}$.` },
 ]
 const s = computed(() => Math.min(Math.max(step.value, 0), STEPS.length - 1))
 
@@ -232,30 +234,33 @@ const hover = ref('')
 
 // --- formatting ---------------------------------------------------------------
 
-// Unicode superscript digits come from two blocks (¹²³ vs ⁴–⁹) and most fonts
-// set them at different heights, so exponents are marked ^{…} in strings and
-// rendered as real <sup> elements by rich().
-const sup = (v: number | string) => `^{${String(v).replace(/-/g, '−')}}`
-function rich(text: string) {
-  return text.split(/(\^\{[^}]*\})/).filter(Boolean)
-    .map(t => t.startsWith('^{') ? { t: t.slice(2, -1), sup: true } : { t, sup: false })
-}
+// Prose with $…$ math segments, rendered with KaTeX (as in CrtExplorer).
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const tex = (t: string) => katex.renderToString(t, { throwOnError: false })
+const md = (text: string) => text.split(/(\$[^$]*\$)/).filter(Boolean)
+  .map(t => t.startsWith('$') ? tex(t.slice(1, -1)) : esc(t)).join('')
+// Number formatting with ASCII minus and an 'e' exponent; minus() for the
+// cells, texNum() for KaTeX.
 const minus = (t: string) => t.replace(/-/g, '−')
-function fmtFp(x: number) {
+const texNum = (t: string) => t.replace(/e(-?\d+)$/, (_, e) => ` \\times 10^{${e}}`)
+function rawFp(x: number) {
   const [m, e] = x.toExponential(2).split('e')
-  return minus(`${m}e${Number(e)}`)
+  return `${m}e${Number(e)}`
 }
-function fmtInt(v: bigint) {
+function rawInt(v: bigint) {
   const t = v.toString()
   const neg = t.startsWith('-')
   const d = neg ? t.slice(1) : t
-  if (t.length <= 7) return minus(t)
+  if (t.length <= 7) return t
   // Rounded for display only; hover shows the exact value.
   const r = Math.round(Number(d.slice(0, 3)) / 10)
   const [m, e] = r >= 100 ? ['1.0', d.length] : [`${String(r)[0]}.${String(r)[1]}`, d.length - 1]
-  return minus(`${neg ? '-' : ''}${m}e${e}`)
+  return `${neg ? '-' : ''}${m}e${e}`
 }
-const fmtErr = (x: number) => x === 0 ? '0' : minus(x.toExponential(1).replace('e', 'e').replace('+', ''))
+const fmtFp = (x: number) => minus(rawFp(x))
+const fmtInt = (v: bigint) => minus(rawInt(v))
+const rawErr = (x: number) => x === 0 ? '0' : x.toExponential(1).replace('+', '')
+const paren = (v: number | bigint) => v < 0 ? `(${v})` : `${v}`
 
 // Sequential tint by magnitude: FP64 by decade, integers by share of their bit budget.
 const tint = (f: number) => ({ background: `color-mix(in srgb, var(--seq) ${Math.round(6 + 44 * Math.min(1, Math.max(0, f)))}%, var(--surface))` })
@@ -266,15 +271,16 @@ const tintBits = (v: bigint, budget: number) => tint(v === 0n ? 0 : bitlen(v) / 
 
 const D = computed(() => Math.min(5, 44 / Math.max(1, N.value - 1)))
 const STACK_PAD = 44
-// The selected slice sits at the front and the rest follow it round in modulus
-// order, like cards cycled through a deck. Lifting a back slice to the top in
-// place would cover the slices that are meant to be in front of it.
+// Slices keep their place in the stack (modulus order, first in front). To
+// show slice t, the slices in front of it fade out.
 function planeStyle(t: number, expanded: boolean) {
-  const pos = (t - sel.value + N.value) % N.value
-  const off = expanded ? pos * D.value : 0
+  const off = expanded ? t * D.value : 0
+  const hidden = expanded && t < sel.value
   return {
     transform: `translate(${off}px, ${-off}px)`,
-    zIndex: N.value - pos,
+    zIndex: N.value - t,
+    opacity: hidden ? 0 : 1,
+    pointerEvents: hidden ? 'none' as const : undefined,
   }
 }
 // CRT step: the first `merged` weighted slices have been added into the front
@@ -298,43 +304,41 @@ const cSliced = computed(() => s.value === 3)
 function infoA(i: number, h: number) {
   const c = calc.value
   const x = inputs.value.A[i][h]
-  if (s.value === 0) return `A[${i},${h}] = ${x}`
-  if (s.value === 1) return `A′[${i},${h}] = trunc(${fmtFp(x)} × 2${sup(c.sA[i])}) = ${c.Ac[i][h]}`
-  return `A′${sub(sel.value)}[${i},${h}] = ${c.Ac[i][h]} mod ${c.mods[sel.value]} = ${c.Alo[sel.value][i][h]}`
+  if (s.value === 0) return `$A[${i},${h}] = ${x}$`
+  if (s.value === 1) return `$A'[${i},${h}] = \operatorname{trunc}(${texNum(rawFp(x))} \times 2^{${c.sA[i]}}) = ${c.Ac[i][h]}$`
+  return `$A'_{${sel.value + 1}}[${i},${h}] = ${c.Ac[i][h]} \bmod ${c.mods[sel.value]} = ${c.Alo[sel.value][i][h]}$`
 }
 function infoB(h: number, j: number) {
   const c = calc.value
   const x = inputs.value.B[h][j]
-  if (s.value === 0) return `B[${h},${j}] = ${x}`
-  if (s.value === 1) return `B′[${h},${j}] = trunc(${fmtFp(x)} × 2${sup(c.sB[j])}) = ${c.Bc[h][j]}`
-  return `B′${sub(sel.value)}[${h},${j}] = ${c.Bc[h][j]} mod ${c.mods[sel.value]} = ${c.Blo[sel.value][h][j]}`
+  if (s.value === 0) return `$B[${h},${j}] = ${x}$`
+  if (s.value === 1) return `$B'[${h},${j}] = \operatorname{trunc}(${texNum(rawFp(x))} \times 2^{${c.sB[j]}}) = ${c.Bc[h][j]}$`
+  return `$B'_{${sel.value + 1}}[${h},${j}] = ${c.Bc[h][j]} \bmod ${c.mods[sel.value]} = ${c.Blo[sel.value][h][j]}$`
 }
 function infoC(i: number, j: number) {
   const c = calc.value
   if (s.value === 3) {
-    const t = sel.value
-    return `C${sub(t)}[${i},${j}] = row ${i} of A′${sub(t)} · column ${j} of B′${sub(t)}, mod ${c.mods[t]} = ${c.Cmid[t][i][j]}`
+    const t = sel.value + 1
+    return `$C_{${t}}[${i},${j}] = A'_{${t}}[${i},:] \cdot B'_{${t}}[:,${j}] \bmod ${c.mods[t - 1]} = ${c.Cmid[t - 1][i][j]}$`
   }
   if (s.value === 4) {
     const k = terms.value
-    const sum = c.Cmid.slice(0, k).map((m, t) => `w${sub(t)}·${m[i][j]}`).join(' + ')
-    if (!corrected.value) return `S[${i},${j}] = ${sum} = ${fmtInt(c.S[k - 1][i][j])}`
-    return `S[${i},${j}] = ${fmtInt(c.S[N.value - 1][i][j])}, round(S/𝒫) = ${c.Q[i][j]}, C″ = S − ${c.Q[i][j]}·𝒫 = ${c.Cpp[i][j]}`
+    const sum = c.Cmid.slice(0, k).map((m, t) => `w_{${t + 1}} \cdot ${paren(m[i][j])}`).join(' + ')
+    if (!corrected.value) return `$S[${i},${j}] = ${sum} = ${texNum(rawInt(c.S[k - 1][i][j]))}$`
+    return `$S[${i},${j}] = ${texNum(rawInt(c.S[N.value - 1][i][j]))}$, $\operatorname{round}(S/\mathcal{P}) = ${c.Q[i][j]}$, $C''[${i},${j}] = S - ${paren(c.Q[i][j])}\,\mathcal{P} = ${c.Cpp[i][j]}$`
   }
-  if (s.value === 5) return `C[${i},${j}] = C″ × 2${sup(-c.sA[i] - c.sB[j])} = ${c.C[i][j]}`
+  if (s.value === 5) return `$C[${i},${j}] = C''[${i},${j}] \times 2^{${-c.sA[i] - c.sB[j]}} = ${texNum(c.C[i][j].toString())}$`
   return ''
 }
-const SUB: Record<string, string> = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉' }
-const sub = (v: number) => String(v + 1).split('').map(c => SUB[c]).join('')
 
 const caption = computed(() => {
   const c = calc.value
   if (s.value === 4) {
-    if (!corrected.value) return `${terms.value} of ${N.value} terms: |S| ≈ 2${sup(maxBits(cur.value).toFixed(0))}, but 𝒫/2 ≈ 2${sup((log2Big(c.P) - 1).toFixed(0))}`
-    return c.crtOk ? '✓ S − 𝒫·round(S/𝒫) = A′B′ exactly' : '✗ CRT mismatch'
+    if (!corrected.value) return `${terms.value} of ${N.value} terms: $|S| \approx 2^{${maxBits(cur.value).toFixed(0)}}$, but $\mathcal{P}/2 \approx 2^{${(log2Big(c.P) - 1).toFixed(0)}}$`
+    return c.crtOk ? String.raw`✓ $S - \mathcal{P}\,\operatorname{round}(S/\mathcal{P}) = A'B'$ exactly` : '✗ CRT mismatch'
   }
-  if (s.value === 5) return `max relative error ${fmtErr(c.err)} with N = ${N.value} (plain FP64 A·B: ${fmtErr(c.errFp64)})`
-  if (s.value === 1) return `per-factor budget: ${c.l2P.toFixed(1)} bits with N = ${N.value}`
+  if (s.value === 5) return `max relative error $${texNum(rawErr(c.err))}$ with $N = ${N.value}$ (plain FP64 $AB$: $${texNum(rawErr(c.errFp64))}$)`
+  if (s.value === 1) return `per-factor budget: ${c.l2P.toFixed(1)} bits with $N = ${N.value}$`
   return ''
 })
 </script>
@@ -344,7 +348,7 @@ const caption = computed(() => {
     <div class="figure" @mouseleave="hover = ''">
       <!-- A -->
       <div class="mat">
-        <div class="label">{{ s === 0 ? 'A' : s === 1 ? 'A′' : 'A′ᵢ' }}<span class="dim"> FP64 → int</span></div>
+        <div class="label" v-html="tex(s === 0 ? 'A' : s === 1 ? `A'` : `A'_i`)" />
         <div class="with-shifts">
           <div class="shifts rows" :class="{ show: s === 1 }">
             <span v-for="(v, i) in calc.sA" :key="i">×2<sup>{{ String(v).replace('-', '−') }}</sup></span>
@@ -371,7 +375,7 @@ const caption = computed(() => {
 
       <!-- B -->
       <div class="mat">
-        <div class="label">{{ s === 0 ? 'B' : s === 1 ? 'B′' : 'B′ᵢ' }}</div>
+        <div class="label" v-html="tex(s === 0 ? 'B' : s === 1 ? `B'` : `B'_i`)" />
         <div class="shifts cols" :class="{ show: s === 1 }" :style="{ gridTemplateColumns: `repeat(${NC}, var(--cw))` }">
           <span v-for="(v, j) in calc.sB" :key="j">×2<sup>{{ String(v).replace('-', '−') }}</sup></span>
         </div>
@@ -396,7 +400,7 @@ const caption = computed(() => {
 
       <!-- C -->
       <div class="mat">
-        <div class="label">{{ s < 3 ? 'C' : s === 3 ? 'Cᵢ' : s === 4 ? (corrected ? 'C″ = A′B′' : 'S') : 'C' }}</div>
+        <div class="label" v-html="tex(s === 3 ? 'C_i' : s === 4 ? (corrected ? `C'' = A'B'` : 'S') : 'C')" />
         <div class="stack" :style="{ paddingTop: `${STACK_PAD - 16}px`, paddingRight: `${STACK_PAD}px` }">
           <div v-for="t in N" :key="t" class="plane" :class="{ front: merging ? t === 1 : t - 1 === sel || !cSliced, pending: s < 3 }"
                :style="[cPlaneStyle(t - 1), { gridTemplateColumns: `repeat(${NC}, var(--cw))` }]">
@@ -413,7 +417,7 @@ const caption = computed(() => {
               </template>
             </template>
             <span v-if="cSliced && t - 1 === sel" class="tag">mod {{ calc.mods[sel] }}</span>
-            <span v-if="merging && t === 1" class="tag">{{ corrected ? '− 𝒫·round(S/𝒫)' : `Σ wᵢ·Cᵢ: ${terms} of ${N}` }}</span>
+            <span v-if="merging && t === 1" class="tag" v-html="md(corrected ? String.raw`$-\mathcal{P}\,\operatorname{round}(S/\mathcal{P})$` : String.raw`$\sum w_i C_i$: ${terms} of ${N}`)" />
           </div>
         </div>
       </div>
@@ -428,11 +432,11 @@ const caption = computed(() => {
       <div class="explain">
         <div class="step-name">
           <span class="num">{{ s + 1 }}/{{ STEPS.length }}</span> {{ STEPS[s].name }}
-          <span v-if="caption" class="caption" :class="{ ok: s === 4 && corrected && calc.crtOk }"><template v-for="(part, k) in rich(caption)" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></span>
+          <span v-if="caption" class="caption" :class="{ ok: s === 4 && corrected && calc.crtOk }" v-html="md(caption)" />
           <button v-if="s === 4" class="replay" @click="replayCrt">↻ replay</button>
         </div>
-        <p><template v-for="(part, k) in rich(STEPS[s].text)" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></p>
-        <p class="hover"><template v-for="(part, k) in rich(hover || 'Hover a cell to see where its value comes from.')" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></p>
+        <p v-html="md(STEPS[s].text)" />
+        <p class="hover" v-html="md(hover || 'Hover a cell to see where its value comes from.')" />
       </div>
       <div class="controls">
         <div class="nav">
@@ -485,7 +489,7 @@ sup { font-size: 0.72em; line-height: 0; }
 .figure { display: flex; align-items: flex-end; gap: 8px; }
 .mat { display: flex; flex-direction: column; }
 .label { font-weight: 700; color: var(--ink-2); margin-bottom: 2px; }
-.label .dim { display: none; }
+.explain :deep(.katex), .label :deep(.katex), .tag :deep(.katex) { font-size: 1.08em; }
 .op { font-size: 20px; color: var(--ink-3); padding-bottom: 50px; }
 
 .with-shifts { display: flex; align-items: flex-end; }
@@ -502,7 +506,7 @@ sup { font-size: 0.72em; line-height: 0; }
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--panel);
-  transition: transform 0.5s cubic-bezier(0.45, 0, 0.55, 1), box-shadow 0.3s;
+  transition: transform 0.5s cubic-bezier(0.45, 0, 0.55, 1), opacity 0.3s, box-shadow 0.3s;
   min-height: 104px;
   position: relative;
 }
