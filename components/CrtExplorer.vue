@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 // The int8 moduli from par_gemmul8 (include/ozaki/crt_table_int8_data.hpp), in
@@ -60,21 +62,19 @@ function parseBig(s: string): bigint | null {
   return null
 }
 
-// Unicode superscript digits come from two blocks (¹²³ vs ⁴–⁹) and most fonts
-// set them at different heights, so exponents are marked ^{…} in strings and
-// rendered as real <sup> elements by rich().
-const sup = (v: number | string) => `^{${String(v).replace(/-/g, '−')}}`
-function rich(text: string) {
-  return text.split(/(\^\{[^}]*\})/).filter(Boolean)
-    .map(t => t.startsWith('^{') ? { t: t.slice(2, -1), sup: true } : { t, sup: false })
-}
+// Labels are rendered with KaTeX, same as the $…$ math in the slides.
+const tex = (s: string) => katex.renderToString(s, { throwOnError: false })
 
-function fmt(v: bigint) {
+// Plain text, for the small residues under the dials.
+const fmt = (v: bigint) => v.toString().replace('-', '−')
+
+// TeX: digits grouped in threes, or scientific notation past 19 digits.
+function fmtTex(v: bigint) {
   const neg = v < 0n
   const s = (neg ? -v : v).toString()
-  const sign = neg ? '−' : ''
-  if (s.length <= 19) return sign + s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-  return `${sign}${s[0]}.${s.slice(1, 4)} × 10${sup(s.length - 1)}`
+  const sign = neg ? '-' : ''
+  if (s.length <= 19) return sign + s.replace(/\B(?=(\d{3})+(?!\d))/g, '\\,')
+  return `${sign}${s[0]}.${s.slice(1, 4)} \\times 10^{${s.length - 1}}`
 }
 
 // --- the CRT -----------------------------------------------------------------
@@ -102,7 +102,7 @@ const done = computed(() => step.value >= N.value)
 const xhat = computed(() => 2n * partial.value >= P.value ? partial.value - P.value : partial.value)
 const exact = computed(() => x.value !== null && xhat.value === x.value)
 const wraps = computed(() => x.value === null ? 0n : (x.value - xhat.value) / P.value)
-const wrapText = computed(() => `${wraps.value > 0n ? '−' : '+'} ${fmt(wraps.value < 0n ? -wraps.value : wraps.value)}`)
+const wrapTex = computed(() => `\\hat{x} = x ${wraps.value > 0n ? '-' : '+'} ${fmtTex(wraps.value < 0n ? -wraps.value : wraps.value)}\\,P`)
 
 let timer: ReturnType<typeof setInterval> | undefined
 function stop() {
@@ -134,8 +134,8 @@ function randomX() {
 const presets = [
   { label: '123456789', v: '123456789' },
   { label: '2^{40}', v: '2^40' },
-  { label: 'int64 max', v: '2^63-1' },
-  { label: '−2^{100}', v: '-2^100' },
+  { label: '\\text{int64 max}', v: '2^63-1' },
+  { label: '-2^{100}', v: '-2^100' },
 ]
 
 // --- geometry ----------------------------------------------------------------
@@ -173,18 +173,18 @@ const pct = (b: number) => `${Math.min(100, (b / METER_MAX) * 100)}%`
     <div class="left">
       <div class="controls">
         <label class="xin">
-          <span class="k">x =</span>
+          <span class="k" v-html="tex('x =')" />
           <input v-model="xText" spellcheck="false" :class="{ bad: x === null }" @keydown.stop>
         </label>
         <div class="presets">
-          <button v-for="p in presets" :key="p.v" @click="xText = p.v"><template v-for="(part, k) in rich(p.label)" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></button>
+          <button v-for="p in presets" :key="p.v" @click="xText = p.v" v-html="tex(p.label)" />
           <button @click="randomX">random</button>
         </div>
       </div>
 
       <div class="controls">
         <label class="nin">
-          <span class="k">N = {{ N }}</span>
+          <span class="k" v-html="tex(`N = ${N}`)" />
           <input v-model.number="N" type="range" min="2" max="20">
         </label>
         <button class="primary" :disabled="x === null" @click="replay">▶︎ reconstruct</button>
@@ -213,8 +213,8 @@ const pct = (b: number) => `${Math.min(100, (b / METER_MAX) * 100)}%`
 
       <div class="meter">
         <div class="meter-head">
-          <span>P/2 ≈ 2<sup>{{ capBits.toFixed(1) }}</sup></span>
-          <span v-if="x !== null">|x| ≈ 2<sup>{{ needBits.toFixed(1) }}</sup></span>
+          <span v-html="tex(`P/2 \\approx 2^{${capBits.toFixed(1)}}`)" />
+          <span v-if="x !== null" v-html="tex(`|x| \\approx 2^{${needBits.toFixed(1)}}`)" />
         </div>
         <div class="track">
           <div class="fill" :style="{ width: pct(capBits) }" />
@@ -228,31 +228,35 @@ const pct = (b: number) => `${Math.min(100, (b / METER_MAX) * 100)}%`
     </div>
 
     <div class="right">
-      <svg :width="RING" :height="RING" class="p-ring" role="img" aria-label="Running CRT sum on the ring of integers mod P">
-        <circle :cx="RING / 2" :cy="RING / 2" :r="RR" class="track-ring" />
-        <line :x1="RING / 2" :y1="RING / 2 - RR - 6" :x2="RING / 2" :y2="RING / 2 - RR + 6" class="zero" />
-        <text :x="RING / 2" :y="RING / 2 - RR - 10" text-anchor="middle" class="lbl">0</text>
-        <text :x="RING / 2" :y="RING / 2 + RR + 18" text-anchor="middle" class="lbl">±P/2</text>
-        <text :x="RING / 2" :y="RING / 2 + 4" text-anchor="middle" class="lbl big">ℤ / P</text>
-        <circle v-if="x !== null" :cx="target.x" :cy="target.y" r="9" class="target" />
-        <circle v-if="x !== null" :cx="dot.x" :cy="dot.y" r="5.5" class="dot" />
-      </svg>
+      <div class="ring-wrap" :style="{ width: `${RING}px`, height: `${RING}px` }">
+        <svg :width="RING" :height="RING" role="img" aria-label="Running CRT sum on the ring of integers mod P">
+          <circle :cx="RING / 2" :cy="RING / 2" :r="RR" class="track-ring" />
+          <line :x1="RING / 2" :y1="RING / 2 - RR - 6" :x2="RING / 2" :y2="RING / 2 - RR + 6" class="zero" />
+          <circle v-if="x !== null" :cx="target.x" :cy="target.y" r="9" class="target" />
+          <circle v-if="x !== null" :cx="dot.x" :cy="dot.y" r="5.5" class="dot" />
+        </svg>
+        <!-- KaTeX can't render inside <svg>, so the ring's labels sit on top of it. -->
+        <span class="lbl" :style="{ top: `${RING / 2 - RR - 24}px` }" v-html="tex('0')" />
+        <span class="lbl" :style="{ top: `${RING / 2 + RR + 6}px` }" v-html="tex('\\pm P/2')" />
+        <span class="lbl big" :style="{ top: `${RING / 2 - 20}px` }" v-html="tex('\\mathbb{Z}/P\\mathbb{Z}')" />
+        <span class="lbl" :style="{ top: `${RING / 2 + 4}px` }">integers mod P</span>
+      </div>
+
+      <div class="legend">
+        <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="8" class="target" /></svg>target <span v-html="tex('x')" /></span>
+        <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="5.5" class="dot" /></svg>running sum <span v-html="tex('\\hat{x}')" /></span>
+      </div>
 
       <div class="readout">
-        <div><span class="k">P</span> = <template v-for="(part, k) in rich(fmt(P))" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></div>
-        <div v-if="x !== null">
-          <span class="k">Σ mod P</span>
-          <span class="dim"> ({{ Math.min(step, N) }}/{{ N }} terms)</span>
-        </div>
-        <div v-if="x !== null" class="mono"><template v-for="(part, k) in rich(fmt(xhat))" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template></div>
+        <div v-html="tex(`P = ${fmtTex(P)}`)" />
+        <div v-if="x !== null" v-html="tex(`\\hat{x} = \\textstyle\\sum_{i=1}^{${Math.min(step, N)}} \\frac{P}{p_i} q_i y_i \\bmod P`)" />
+        <div v-if="x !== null" class="xhat" v-html="tex(`\\phantom{\\hat{x}} = ${fmtTex(xhat)}`)" />
       </div>
 
       <div v-if="x === null" class="verdict ko">✗ not an integer</div>
       <div v-else-if="!done" class="verdict pending">summing term {{ step }} of {{ N }}…</div>
-      <div v-else-if="exact" class="verdict ok">✓ x̂ = x, recovered exactly</div>
-      <div v-else class="verdict ko">
-        ✗ x̂ = x <template v-for="(part, k) in rich(wrapText)" :key="k"><sup v-if="part.sup">{{ part.t }}</sup><template v-else>{{ part.t }}</template></template>·P: wrapped
-      </div>
+      <div v-else-if="exact" class="verdict ok">✓ <span v-html="tex('\\hat{x} = x')" />: recovered exactly</div>
+      <div v-else class="verdict ko">✗ <span v-html="tex(wrapTex)" />: wrapped</div>
     </div>
   </div>
 </template>
@@ -290,8 +294,7 @@ html.dark .crt {
 
 .k { color: var(--ink-2); font-weight: 600; }
 .dim { color: var(--ink-3); }
-sup { font-size: 0.72em; line-height: 0; }
-.mono, input { font-family: var(--slidev-code-font-family, ui-monospace, monospace); }
+input { font-family: var(--slidev-code-font-family, ui-monospace, monospace); }
 
 .controls {
   display: flex;
@@ -382,8 +385,11 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .right { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .track-ring { fill: none; stroke: var(--line); stroke-width: 2; }
-.lbl { fill: var(--ink-3); font-size: 11px; }
-.lbl.big { font-size: 15px; fill: var(--ink-2); }
+.ring-wrap { position: relative; }
+.lbl { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--ink-3); font-size: 11px; }
+.lbl.big { font-size: 15px; color: var(--ink-2); }
+.legend { display: flex; gap: 12px; color: var(--ink-2); font-size: 11px; }
+.legend > span { display: flex; align-items: center; gap: 3px; }
 .target { fill: none; stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 3 2; }
 .dot {
   fill: var(--accent);
@@ -392,7 +398,7 @@ button:disabled { opacity: 0.4; cursor: default; }
   transition: cx 0.35s, cy 0.35s;
 }
 .readout { width: 100%; color: var(--ink); }
-.readout .mono { word-break: break-all; }
+.readout .xhat { overflow-x: auto; }
 .verdict {
   width: 100%;
   padding: 5px 8px;
