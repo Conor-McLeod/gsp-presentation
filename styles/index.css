@@ -26,6 +26,23 @@
   margin-top: 0;
 }
 
+/* Tighter than Slidev's base (li 1.8em, p 1.5rem with 1rem margins), closer
+   to beamer. Item spacing comes from the gap between items, not from leading,
+   so a wrapped item still reads as one item. */
+.slidev-layout p {
+  line-height: 1.4;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.slidev-layout li {
+  line-height: 1.4;
+}
+
+.slidev-layout li + li {
+  margin-top: 0.3rem;
+}
+
 .slidev-layout ul li::marker {
   color: var(--fzj-blue);
 }
