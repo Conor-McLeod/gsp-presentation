@@ -332,6 +332,97 @@ flowchart LR
 
 # Copy engine based collectives
 
-- Since the CUTLASS kernels use every SM on the GPU, any other kernels using the SMs causes contention and slows things down.
-- NCCL collectives need the SMs to perform reductions; but even non-reduction collectives also use them
-- We opt for peer-to-peer communication to free the SMs to focus purely on the compute kernels. These only use the copy engines.
+The fused CUTLASS GEMM launches 132 blocks: **one per SM** on the GH200. Anything else on the SMs competes with it.
+
+<div class="grid grid-cols-2 gap-8 mt-4">
+<div>
+
+**NCCL** `SendRecv`: a kernel
+
+- Takes 24 SMs, pushing 24 GEMM blocks into a second wave: GEMM **3.1–3.8 ms → 4.8–5.1 ms**
+- Can't make progress while the GEMMs fill every SM: an exchange that takes 1.05 ms alone took **4.78 ms**, with no overlap
+- Even a plain send/recv with no reduction needs SMs
+
+</div>
+<div>
+
+**Peer copy**: CUDA IPC + `cudaMemcpy2DAsync`
+
+- Runs on the **copy engines**, so **zero SMs** are used
+- Each rank maps its peers' buffers once over MPI, then:
+  - **pulls** the A/B int8 planes straight into its assembled buffer, so one strided copy replaces recv + unpack
+  - **pushes** each C tile to its owner as soon as that GEMM ends
+- The ordering NCCL used to provide now comes from events + two host barriers
+
+</div>
+</div>
+
+<!--
+The moduli GEMM assumes it owns the device. NCCL's communication kernels are still kernels: 24 blocks of ncclDevKernel_SendRecv take SMs away, so 24 GEMM blocks run as a second wave. Worse, a communication kernel sitting on an SM makes no progress while the rank's own GEMM saturates the device, so the exchange only finished when the GEMMs did.
+
+Peer copies are DMA on the copy engines, which don't care how busy the SMs are. Setup: cuMemGetAddressRange for each allocation's base, cudaIpcGetMemHandle / cudaIpcOpenMemHandle brokered over MPI, done once.
+
+Pull for A/B: the reader knows when it needs the data. Push for C: the writer knows from a local event when GEMM j is done.
+
+NCCL's send/recv pairing also gave us cross-rank ordering for free. A pull doesn't, so there are host barriers: one so no rank reads a plane before its peer has produced it, and one so no rank overwrites a plane while a peer is still reading it.
+
+Behind PGEMM_PEER_COPY=1. It needs 4 ranks on one node with distinct P2P-capable GPUs, and falls back to NCCL otherwise.
+-->
+
+---
+clicks: 3
+---
+
+# Copy engine based collectives: the timeline
+
+<StageTimeline :step="$clicks" />
+
+<!--
+Real nsys data: stage 3 (assemble + moduli GEMM) on rank 2, rep 0 of the round-0 job of each step, all on jpbo-103-23. Rank 2 is the slowest GPU on that node, so its stage ends on its own last GEMM rather than waiting at a barrier for someone else. Regenerate with analysis/plots/stage3_export.py.
+
+Top band: what runs on the SMs. Bottom band: the copy engines, one lane per peer link in, one per peer out. Each click is one commit; bars slide to where they ran in that step. The dashed lines are where the other steps' stages ended.
+
+NCCL: the copy engines sit idle. The A/B exchange for GEMM 1 is launched at 0.3 ms but can't start until GEMM 0's blocks begin retiring at ~4.7 ms (hatched). It's a kernel and every SM is taken. So GEMM 1 starts at ~6.2 ms. The C exchanges after each GEMM are NCCL kernels too.
+
+A/B planes on the copy engines: all of both GEMMs' inputs land by ~1.4 ms, on the copy engines, with no SMs used. GEMM 1 now starts as soon as GEMM 0 lets it. But each link runs one copy at a time, A0, A1, B0, B1: B0 is ready but stuck behind A1 (hatched), and GEMM 0 needs B0, not A1.
+
+Copies reordered: hold A(j) until B(j-1) lands, so each link runs A0, B0, A1, B1. GEMM 0 starts ~330 µs earlier, and everything behind it moves with it.
+
+C pushed: the C exchange leaves NCCL too. Each tile is pushed straight into its owner's buffer as soon as its GEMM ends, so GEMM 0's tiles go out while GEMM 1 is still running.
+
+Hover any bar for its times. "zoom" shows the first 1.6 ms, where the copy reordering is easier to see.
+-->
+
+---
+
+# Copy engine based collectives: results
+
+`par_ozaki_async`, 12000³, 8 moduli. Every step rebuilt and rerun on **one node**, interleaved. Slowest rank, mean of 2 jobs.
+
+| Step | Total (ms) | Δ (ms) | Assemble + GEMM (ms) |
+|---|--:|--:|--:|
+| NCCL | 14.89 | | 11.08 |
+| **A/B planes on the copy engines** | **13.59** | **−1.30** | 9.80 |
+| **Copies reordered: GEMM 0's inputs first** | **13.19** | **−0.40** | 9.45 |
+| **C tiles pushed peer-to-peer** | **12.83** | **−0.36** | 8.97 |
+
+- **14.9 → 12.8 ms (−14%)**, same accuracy (max rel. error 7.3 × 10⁻¹⁵)
+- Every step helps, and no job of one step overlaps a job of the next
+- Under NCCL each GEMM needs **23% more cycles**: the second wave, measured
+- First attempt silently ran NCCL: `srun` gave each rank one GPU, so all four saw "device 0"
+
+<!--
+Jobs 2161528–2161535, all on jpbo-103-23 (scripts/peer_copy_campaign.sh). Four builds: HEAD with PGEMM_PEER_COPY=0, c0af880^, c0af880 and HEAD with it on. Nothing under src/ or include/ differs between them except the peer-copy commits, so each step is exactly one commit. Two rounds, the order rotated between them so drift on the node doesn't line up with a step.
+
+Why rerun: the original jobs each landed on a different node, and which GPU is slow (13–15% per GEMM) depends on the node. That was bigger than every step but the first. On mixed nodes the first step looked like −2.0 ms and the reordering looked like nothing; on one node they're −1.3 and −0.4.
+
+"Total" is the north star: per rep, sum the NVTX stage ranges on each rank, keep the slowest rank, average over the 2 timed reps. Per job: NCCL 14.87 / 14.91, A/B 13.57 / 13.62, reordered 13.26 / 13.12, C push 12.96 / 12.70. Two jobs per step is not a significance test, but the ranges don't overlap.
+
+The reordering: each peer link runs one copy at a time, and it ran A0, A1, B0, B1. GEMM 0 needs B0 but not A1, so B0 waited ~350 us behind A1. Holding A(j) until B(j-1) lands: GEMM 0 starts ~330 us earlier (1140 → 815 us into the stage), and GEMM 1 ~270 us earlier.
+
+The C push: the C_mid exchange still went over NCCL and all landed after the last GEMM. Pushing each tile straight into its owner's buffer, with no packing and no NCCL kernel, lets plane 0's pushes overlap GEMM 1.
+
+Cycles: from the nsys GPU metrics, each GEMM launch takes 4.36–4.66 M cycles under NCCL against 3.53–3.63 M with peer copy. The GPUs actually clock higher under NCCL (~1140 vs ~1000 MHz on GPU 0) because the GEMM is less tensor-dense, which partly hides it. NCCL is also noisy: its two reps differ by 1.2–1.3 ms, against 0.01–0.4 ms with peer copy.
+
+The fallback story (job 1703699): --gpu-bind=single:1 and --gpus-per-task=1 make srun set a per-rank CUDA_VISIBLE_DEVICES, so every rank reported device ordinal 0 and the peer-copy setup refused. Fixed with --gpu-bind=none.
+-->

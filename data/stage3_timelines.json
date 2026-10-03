@@ -1,0 +1,1228 @@
+{
+ "steps": [
+  {
+   "step": "nccl",
+   "title": "NCCL",
+   "job": "2161528",
+   "node": "jpbo-103-23",
+   "rank": 2,
+   "bucket": "rep 0",
+   "stage_us": 10489.1,
+   "events": [
+    {
+     "id": "recv (NCCL)|nccl|0-0",
+     "kind": "nccl",
+     "j": 0,
+     "lane": "recv (NCCL)",
+     "label": "NCCL A/B j0",
+     "s": 116.9,
+     "e": 818.4,
+     "launch": 105.5
+    },
+    {
+     "id": "self|self|0-0",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "A j0",
+     "s": 133.7,
+     "e": 186.0,
+     "launch": 121.4
+    },
+    {
+     "id": "self|self|0-1",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "B j0",
+     "s": 189.1,
+     "e": 240.5,
+     "launch": 131.5
+    },
+    {
+     "id": "unpack|unpack|0-0",
+     "kind": "unpack",
+     "j": 0,
+     "lane": "unpack",
+     "label": "unpack j0",
+     "s": 909.0,
+     "e": 954.9,
+     "launch": 138.7
+    },
+    {
+     "id": "unpack|unpack|0-1",
+     "kind": "unpack",
+     "j": 0,
+     "lane": "unpack",
+     "label": "unpack j0",
+     "s": 864.3,
+     "e": 909.8,
+     "launch": 145.0
+    },
+    {
+     "id": "unpack|unpack|0-2",
+     "kind": "unpack",
+     "j": 0,
+     "lane": "unpack",
+     "label": "unpack j0",
+     "s": 820.1,
+     "e": 865.3,
+     "launch": 152.7
+    },
+    {
+     "id": "unpack|unpack|0-3",
+     "kind": "unpack",
+     "j": 0,
+     "lane": "unpack",
+     "label": "unpack j0",
+     "s": 1043.3,
+     "e": 1088.2,
+     "launch": 159.6
+    },
+    {
+     "id": "unpack|unpack|0-4",
+     "kind": "unpack",
+     "j": 0,
+     "lane": "unpack",
+     "label": "unpack j0",
+     "s": 998.7,
+     "e": 1044.4,
+     "launch": 166.0
+    },
+    {
+     "id": "unpack|unpack|0-5",
+     "kind": "unpack",
+     "j": 0,
+     "lane": "unpack",
+     "label": "unpack j0",
+     "s": 954.0,
+     "e": 999.6,
+     "launch": 172.5
+    },
+    {
+     "id": "compute j0|gemm|0-0",
+     "kind": "gemm",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "GEMM j0",
+     "s": 1092.9,
+     "e": 4907.1,
+     "launch": 205.5
+    },
+    {
+     "id": "recv (NCCL)|nccl|1-0",
+     "kind": "nccl",
+     "j": 1,
+     "lane": "recv (NCCL)",
+     "label": "NCCL A/B j1",
+     "s": 4703.0,
+     "e": 5967.4,
+     "launch": 256.1
+    },
+    {
+     "id": "self|self|1-0",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "A j1",
+     "s": 278.9,
+     "e": 331.3,
+     "launch": 269.5
+    },
+    {
+     "id": "self|self|1-1",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "B j1",
+     "s": 334.3,
+     "e": 381.4,
+     "launch": 274.8
+    },
+    {
+     "id": "unpack|unpack|1-0",
+     "kind": "unpack",
+     "j": 1,
+     "lane": "unpack",
+     "label": "unpack j1",
+     "s": 6058.2,
+     "e": 6103.9,
+     "launch": 279.9
+    },
+    {
+     "id": "unpack|unpack|1-1",
+     "kind": "unpack",
+     "j": 1,
+     "lane": "unpack",
+     "label": "unpack j1",
+     "s": 5969.6,
+     "e": 6014.8,
+     "launch": 285.1
+    },
+    {
+     "id": "unpack|unpack|1-2",
+     "kind": "unpack",
+     "j": 1,
+     "lane": "unpack",
+     "label": "unpack j1",
+     "s": 6013.8,
+     "e": 6059.7,
+     "launch": 290.8
+    },
+    {
+     "id": "unpack|unpack|1-3",
+     "kind": "unpack",
+     "j": 1,
+     "lane": "unpack",
+     "label": "unpack j1",
+     "s": 6192.5,
+     "e": 6237.2,
+     "launch": 296.3
+    },
+    {
+     "id": "unpack|unpack|1-4",
+     "kind": "unpack",
+     "j": 1,
+     "lane": "unpack",
+     "label": "unpack j1",
+     "s": 6103.0,
+     "e": 6148.6,
+     "launch": 302.2
+    },
+    {
+     "id": "unpack|unpack|1-5",
+     "kind": "unpack",
+     "j": 1,
+     "lane": "unpack",
+     "label": "unpack j1",
+     "s": 6147.6,
+     "e": 6193.5,
+     "launch": 308.0
+    },
+    {
+     "id": "compute j1|gemm|1-0",
+     "kind": "gemm",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "GEMM j1",
+     "s": 6241.3,
+     "e": 9971.8,
+     "launch": 329.0
+    },
+    {
+     "id": "compute j0|pack|0-0",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 self",
+     "s": 4910.0,
+     "e": 4961.5,
+     "launch": 338.4
+    },
+    {
+     "id": "compute j0|pack|0-1",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q0",
+     "s": 4965.4,
+     "e": 5015.2,
+     "launch": 342.8
+    },
+    {
+     "id": "compute j0|pack|0-2",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q1",
+     "s": 5019.0,
+     "e": 5070.5,
+     "launch": 346.2
+    },
+    {
+     "id": "compute j0|pack|0-3",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q3",
+     "s": 5073.4,
+     "e": 5124.5,
+     "launch": 349.6
+    },
+    {
+     "id": "compute j0|nccl|0-0",
+     "kind": "nccl",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "NCCL C_mid j0",
+     "s": 5127.3,
+     "e": 5909.7,
+     "launch": 363.3
+    },
+    {
+     "id": "compute j1|pack|1-0",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 self",
+     "s": 9973.7,
+     "e": 10018.6,
+     "launch": 370.5
+    },
+    {
+     "id": "compute j1|pack|1-1",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q0",
+     "s": 10020.3,
+     "e": 10065.7,
+     "launch": 374.8
+    },
+    {
+     "id": "compute j1|pack|1-2",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q1",
+     "s": 10067.2,
+     "e": 10112.1,
+     "launch": 378.0
+    },
+    {
+     "id": "compute j1|pack|1-3",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q3",
+     "s": 10113.7,
+     "e": 10158.6,
+     "launch": 381.0
+    },
+    {
+     "id": "compute j1|nccl|1-0",
+     "kind": "nccl",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "NCCL C_mid j1",
+     "s": 10161.1,
+     "e": 10484.6,
+     "launch": 392.6
+    }
+   ]
+  },
+  {
+   "step": "ab_pull",
+   "title": "A/B planes on the copy engines",
+   "job": "2161529",
+   "node": "jpbo-103-23",
+   "rank": 2,
+   "bucket": "rep 0",
+   "stage_us": 9723.9,
+   "events": [
+    {
+     "id": "recvA ← q0|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 0,
+     "lane": "recvA ← q0",
+     "label": "A j0 ←q0",
+     "s": 125.7,
+     "e": 421.0,
+     "launch": 109.7
+    },
+    {
+     "id": "recvA ← q1|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 1,
+     "lane": "recvA ← q1",
+     "label": "A j0 ←q1",
+     "s": 141.6,
+     "e": 444.1,
+     "launch": 125.5
+    },
+    {
+     "id": "recvA ← q3|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 3,
+     "lane": "recvA ← q3",
+     "label": "A j0 ←q3",
+     "s": 148.6,
+     "e": 450.7,
+     "launch": 133.0
+    },
+    {
+     "id": "recvB ← q0|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 0,
+     "lane": "recvB ← q0",
+     "label": "B j0 ←q0",
+     "s": 728.3,
+     "e": 1022.4,
+     "launch": 138.6,
+     "ready": 421.0
+    },
+    {
+     "id": "recvB ← q1|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 1,
+     "lane": "recvB ← q1",
+     "label": "B j0 ←q1",
+     "s": 800.5,
+     "e": 1104.3,
+     "launch": 144.3,
+     "ready": 444.1
+    },
+    {
+     "id": "recvB ← q3|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 3,
+     "lane": "recvB ← q3",
+     "label": "B j0 ←q3",
+     "s": 806.8,
+     "e": 1111.0,
+     "launch": 150.7,
+     "ready": 450.7
+    },
+    {
+     "id": "self|self|0-0",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "A j0",
+     "s": 167.0,
+     "e": 212.1,
+     "launch": 155.6
+    },
+    {
+     "id": "self|self|0-1",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "B j0",
+     "s": 215.5,
+     "e": 260.3,
+     "launch": 164.4
+    },
+    {
+     "id": "compute j0|gemm|0-0",
+     "kind": "gemm",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "GEMM j0",
+     "s": 1128.1,
+     "e": 4931.4,
+     "launch": 198.7
+    },
+    {
+     "id": "recvA ← q0|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 0,
+     "lane": "recvA ← q0",
+     "label": "A j1 ←q0",
+     "s": 428.8,
+     "e": 721.6,
+     "launch": 208.3
+    },
+    {
+     "id": "recvA ← q1|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 1,
+     "lane": "recvA ← q1",
+     "label": "A j1 ←q1",
+     "s": 471.8,
+     "e": 773.2,
+     "launch": 213.1
+    },
+    {
+     "id": "recvA ← q3|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 3,
+     "lane": "recvA ← q3",
+     "label": "A j1 ←q3",
+     "s": 478.9,
+     "e": 778.7,
+     "launch": 216.3
+    },
+    {
+     "id": "recvB ← q0|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 0,
+     "lane": "recvB ← q0",
+     "label": "B j1 ←q0",
+     "s": 1029.2,
+     "e": 1323.2,
+     "launch": 220.7,
+     "ready": 1022.4
+    },
+    {
+     "id": "recvB ← q1|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 1,
+     "lane": "recvB ← q1",
+     "label": "B j1 ←q1",
+     "s": 1131.3,
+     "e": 1432.4,
+     "launch": 224.6,
+     "ready": 1104.3
+    },
+    {
+     "id": "recvB ← q3|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 3,
+     "lane": "recvB ← q3",
+     "label": "B j1 ←q3",
+     "s": 1138.0,
+     "e": 1434.7,
+     "launch": 228.8,
+     "ready": 1111.0
+    },
+    {
+     "id": "self|self|1-0",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "A j1",
+     "s": 262.8,
+     "e": 307.7,
+     "launch": 232.4
+    },
+    {
+     "id": "self|self|1-1",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "B j1",
+     "s": 311.4,
+     "e": 356.6,
+     "launch": 238.8
+    },
+    {
+     "id": "compute j1|gemm|1-0",
+     "kind": "gemm",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "GEMM j1",
+     "s": 4693.3,
+     "e": 8810.6,
+     "launch": 262.0
+    },
+    {
+     "id": "compute j0|pack|0-0",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 self",
+     "s": 8593.9,
+     "e": 8752.8,
+     "launch": 270.4
+    },
+    {
+     "id": "compute j0|pack|0-1",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q0",
+     "s": 8754.5,
+     "e": 8805.3,
+     "launch": 275.0
+    },
+    {
+     "id": "compute j0|pack|0-2",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q1",
+     "s": 8806.8,
+     "e": 8852.6,
+     "launch": 279.2
+    },
+    {
+     "id": "compute j0|pack|0-3",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q3",
+     "s": 8895.8,
+     "e": 8941.7,
+     "launch": 282.8
+    },
+    {
+     "id": "compute j0|nccl|0-0",
+     "kind": "nccl",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "NCCL C_mid j0",
+     "s": 8984.9,
+     "e": 9349.0,
+     "launch": 306.0
+    },
+    {
+     "id": "compute j1|pack|1-0",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 self",
+     "s": 8851.5,
+     "e": 8897.0,
+     "launch": 315.8
+    },
+    {
+     "id": "compute j1|pack|1-1",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q0",
+     "s": 8940.5,
+     "e": 8985.7,
+     "launch": 321.0
+    },
+    {
+     "id": "compute j1|pack|1-2",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q1",
+     "s": 8987.4,
+     "e": 9037.5,
+     "launch": 324.2
+    },
+    {
+     "id": "compute j1|pack|1-3",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q3",
+     "s": 9039.1,
+     "e": 9090.5,
+     "launch": 327.2
+    },
+    {
+     "id": "compute j1|nccl|1-0",
+     "kind": "nccl",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "NCCL C_mid j1",
+     "s": 9351.5,
+     "e": 9696.4,
+     "launch": 340.0
+    }
+   ]
+  },
+  {
+   "step": "ab_ordered",
+   "title": "Copies reordered",
+   "job": "2161530",
+   "node": "jpbo-103-23",
+   "rank": 2,
+   "bucket": "rep 0",
+   "stage_us": 9372.5,
+   "events": [
+    {
+     "id": "recvA ← q0|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 0,
+     "lane": "recvA ← q0",
+     "label": "A j0 ←q0",
+     "s": 115.3,
+     "e": 409.8,
+     "launch": 101.0
+    },
+    {
+     "id": "recvA ← q1|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 1,
+     "lane": "recvA ← q1",
+     "label": "A j0 ←q1",
+     "s": 130.5,
+     "e": 436.2,
+     "launch": 114.9
+    },
+    {
+     "id": "recvA ← q3|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 3,
+     "lane": "recvA ← q3",
+     "label": "A j0 ←q3",
+     "s": 137.6,
+     "e": 446.8,
+     "launch": 122.4
+    },
+    {
+     "id": "recvB ← q0|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 0,
+     "lane": "recvB ← q0",
+     "label": "B j0 ←q0",
+     "s": 417.9,
+     "e": 712.3,
+     "launch": 127.9,
+     "ready": 409.8
+    },
+    {
+     "id": "recvB ← q1|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 1,
+     "lane": "recvB ← q1",
+     "label": "B j0 ←q1",
+     "s": 467.9,
+     "e": 769.8,
+     "launch": 133.2,
+     "ready": 436.2
+    },
+    {
+     "id": "recvB ← q3|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 3,
+     "lane": "recvB ← q3",
+     "label": "B j0 ←q3",
+     "s": 474.0,
+     "e": 776.5,
+     "launch": 138.0,
+     "ready": 446.8
+    },
+    {
+     "id": "self|self|0-0",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "A j0",
+     "s": 152.7,
+     "e": 198.0,
+     "launch": 142.0
+    },
+    {
+     "id": "self|self|0-1",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "B j0",
+     "s": 200.2,
+     "e": 245.0,
+     "launch": 149.9
+    },
+    {
+     "id": "compute j0|gemm|0-0",
+     "kind": "gemm",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "GEMM j0",
+     "s": 794.9,
+     "e": 4644.3,
+     "launch": 182.4
+    },
+    {
+     "id": "recvA ← q0|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 0,
+     "lane": "recvA ← q0",
+     "label": "A j1 ←q0",
+     "s": 720.0,
+     "e": 1013.6,
+     "launch": 192.8
+    },
+    {
+     "id": "recvA ← q1|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 1,
+     "lane": "recvA ← q1",
+     "label": "A j1 ←q1",
+     "s": 797.4,
+     "e": 1105.5,
+     "launch": 198.1
+    },
+    {
+     "id": "recvA ← q3|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 3,
+     "lane": "recvA ← q3",
+     "label": "A j1 ←q3",
+     "s": 804.7,
+     "e": 1111.7,
+     "launch": 202.4
+    },
+    {
+     "id": "recvB ← q0|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 0,
+     "lane": "recvB ← q0",
+     "label": "B j1 ←q0",
+     "s": 1021.7,
+     "e": 1315.5,
+     "launch": 206.2,
+     "ready": 1013.6
+    },
+    {
+     "id": "recvB ← q1|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 1,
+     "lane": "recvB ← q1",
+     "label": "B j1 ←q1",
+     "s": 1132.1,
+     "e": 1426.1,
+     "launch": 210.0,
+     "ready": 1105.5
+    },
+    {
+     "id": "recvB ← q3|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 3,
+     "lane": "recvB ← q3",
+     "label": "B j1 ←q3",
+     "s": 1138.1,
+     "e": 1431.4,
+     "launch": 213.4,
+     "ready": 1111.7
+    },
+    {
+     "id": "self|self|1-0",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "A j1",
+     "s": 248.7,
+     "e": 294.0,
+     "launch": 216.5
+    },
+    {
+     "id": "self|self|1-1",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "B j1",
+     "s": 297.4,
+     "e": 342.3,
+     "launch": 224.7
+    },
+    {
+     "id": "compute j1|gemm|1-0",
+     "kind": "gemm",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "GEMM j1",
+     "s": 4398.3,
+     "e": 8445.1,
+     "launch": 250.3
+    },
+    {
+     "id": "compute j0|pack|0-0",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 self",
+     "s": 8216.3,
+     "e": 8377.8,
+     "launch": 259.0
+    },
+    {
+     "id": "compute j0|pack|0-1",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q0",
+     "s": 8379.6,
+     "e": 8431.5,
+     "launch": 263.3
+    },
+    {
+     "id": "compute j0|pack|0-2",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q1",
+     "s": 8433.0,
+     "e": 8478.4,
+     "launch": 266.8
+    },
+    {
+     "id": "compute j0|pack|0-3",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 →q3",
+     "s": 8521.9,
+     "e": 8567.4,
+     "launch": 270.1
+    },
+    {
+     "id": "compute j0|nccl|0-0",
+     "kind": "nccl",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "NCCL C_mid j0",
+     "s": 8611.1,
+     "e": 8992.7,
+     "launch": 293.0
+    },
+    {
+     "id": "compute j1|pack|1-0",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 self",
+     "s": 8477.3,
+     "e": 8523.0,
+     "launch": 302.7
+    },
+    {
+     "id": "compute j1|pack|1-1",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q0",
+     "s": 8566.2,
+     "e": 8611.9,
+     "launch": 307.5
+    },
+    {
+     "id": "compute j1|pack|1-2",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q1",
+     "s": 8613.5,
+     "e": 8663.8,
+     "launch": 310.9
+    },
+    {
+     "id": "compute j1|pack|1-3",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 →q3",
+     "s": 8665.5,
+     "e": 8719.1,
+     "launch": 314.1
+    },
+    {
+     "id": "compute j1|nccl|1-0",
+     "kind": "nccl",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "NCCL C_mid j1",
+     "s": 8995.1,
+     "e": 9344.6,
+     "launch": 329.5
+    }
+   ]
+  },
+  {
+   "step": "c_push",
+   "title": "C tiles pushed peer-to-peer",
+   "job": "2161531",
+   "node": "jpbo-103-23",
+   "rank": 2,
+   "bucket": "rep 0",
+   "stage_us": 8982.2,
+   "events": [
+    {
+     "id": "recvA ← q0|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 0,
+     "lane": "recvA ← q0",
+     "label": "A j0 ←q0",
+     "s": 117.0,
+     "e": 412.5,
+     "launch": 106.2
+    },
+    {
+     "id": "recvA ← q1|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 1,
+     "lane": "recvA ← q1",
+     "label": "A j0 ←q1",
+     "s": 130.6,
+     "e": 425.3,
+     "launch": 117.1
+    },
+    {
+     "id": "recvA ← q3|A|0-0",
+     "kind": "A",
+     "j": 0,
+     "peer": 3,
+     "lane": "recvA ← q3",
+     "label": "A j0 ←q3",
+     "s": 138.0,
+     "e": 447.4,
+     "launch": 122.3
+    },
+    {
+     "id": "recvB ← q0|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 0,
+     "lane": "recvB ← q0",
+     "label": "B j0 ←q0",
+     "s": 422.8,
+     "e": 717.0,
+     "launch": 126.4,
+     "ready": 412.5
+    },
+    {
+     "id": "recvB ← q1|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 1,
+     "lane": "recvB ← q1",
+     "label": "B j0 ←q1",
+     "s": 440.1,
+     "e": 740.2,
+     "launch": 130.7,
+     "ready": 425.3
+    },
+    {
+     "id": "recvB ← q3|B|0-0",
+     "kind": "B",
+     "j": 0,
+     "peer": 3,
+     "lane": "recvB ← q3",
+     "label": "B j0 ←q3",
+     "s": 469.6,
+     "e": 771.0,
+     "launch": 135.3,
+     "ready": 447.4
+    },
+    {
+     "id": "self|self|0-0",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "A j0",
+     "s": 152.7,
+     "e": 197.8,
+     "launch": 141.2
+    },
+    {
+     "id": "self|self|0-1",
+     "kind": "self",
+     "j": 0,
+     "lane": "self",
+     "label": "B j0",
+     "s": 199.7,
+     "e": 244.8,
+     "launch": 149.3
+    },
+    {
+     "id": "compute j0|gemm|0-0",
+     "kind": "gemm",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "GEMM j0",
+     "s": 782.6,
+     "e": 4756.2,
+     "launch": 173.0
+    },
+    {
+     "id": "recvA ← q0|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 0,
+     "lane": "recvA ← q0",
+     "label": "A j1 ←q0",
+     "s": 725.8,
+     "e": 1020.7,
+     "launch": 182.0
+    },
+    {
+     "id": "recvA ← q1|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 1,
+     "lane": "recvA ← q1",
+     "label": "A j1 ←q1",
+     "s": 761.2,
+     "e": 1068.2,
+     "launch": 186.7
+    },
+    {
+     "id": "recvA ← q3|A|1-0",
+     "kind": "A",
+     "j": 1,
+     "peer": 3,
+     "lane": "recvA ← q3",
+     "label": "A j1 ←q3",
+     "s": 787.9,
+     "e": 1103.5,
+     "launch": 190.6
+    },
+    {
+     "id": "recvB ← q0|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 0,
+     "lane": "recvB ← q0",
+     "label": "B j1 ←q0",
+     "s": 1031.5,
+     "e": 1327.6,
+     "launch": 194.3,
+     "ready": 1020.7
+    },
+    {
+     "id": "recvB ← q1|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 1,
+     "lane": "recvB ← q1",
+     "label": "B j1 ←q1",
+     "s": 1090.5,
+     "e": 1383.9,
+     "launch": 197.9,
+     "ready": 1068.2
+    },
+    {
+     "id": "recvB ← q3|B|1-0",
+     "kind": "B",
+     "j": 1,
+     "peer": 3,
+     "lane": "recvB ← q3",
+     "label": "B j1 ←q3",
+     "s": 1120.9,
+     "e": 1415.5,
+     "launch": 201.6,
+     "ready": 1103.5
+    },
+    {
+     "id": "self|self|1-0",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "A j1",
+     "s": 246.6,
+     "e": 291.5,
+     "launch": 205.3
+    },
+    {
+     "id": "self|self|1-1",
+     "kind": "self",
+     "j": 1,
+     "lane": "self",
+     "label": "B j1",
+     "s": 293.4,
+     "e": 338.7,
+     "launch": 209.4
+    },
+    {
+     "id": "compute j1|gemm|1-0",
+     "kind": "gemm",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "GEMM j1",
+     "s": 4522.1,
+     "e": 8673.5,
+     "launch": 229.3
+    },
+    {
+     "id": "pushC → q0|push|0-0",
+     "kind": "push",
+     "j": 0,
+     "peer": 0,
+     "lane": "pushC → q0",
+     "label": "C j0 →q0",
+     "s": 4766.6,
+     "e": 5043.6,
+     "launch": 237.4
+    },
+    {
+     "id": "pushC → q1|push|0-0",
+     "kind": "push",
+     "j": 0,
+     "peer": 1,
+     "lane": "pushC → q1",
+     "label": "C j0 →q1",
+     "s": 4766.4,
+     "e": 5045.5,
+     "launch": 241.7
+    },
+    {
+     "id": "pushC → q3|push|0-0",
+     "kind": "push",
+     "j": 0,
+     "peer": 3,
+     "lane": "pushC → q3",
+     "label": "C j0 →q3",
+     "s": 4765.4,
+     "e": 5046.9,
+     "launch": 245.3
+    },
+    {
+     "id": "compute j0|pack|0-0",
+     "kind": "pack",
+     "j": 0,
+     "lane": "compute j0",
+     "label": "C j0 self",
+     "s": 8476.7,
+     "e": 8616.8,
+     "launch": 247.9
+    },
+    {
+     "id": "pushC → q0|push|1-0",
+     "kind": "push",
+     "j": 1,
+     "peer": 0,
+     "lane": "pushC → q0",
+     "label": "C j1 →q0",
+     "s": 8677.6,
+     "e": 8954.9,
+     "launch": 253.2
+    },
+    {
+     "id": "pushC → q1|push|1-0",
+     "kind": "push",
+     "j": 1,
+     "peer": 1,
+     "lane": "pushC → q1",
+     "label": "C j1 →q1",
+     "s": 8677.0,
+     "e": 8954.3,
+     "launch": 256.9
+    },
+    {
+     "id": "pushC → q3|push|1-0",
+     "kind": "push",
+     "j": 1,
+     "peer": 3,
+     "lane": "pushC → q3",
+     "label": "C j1 →q3",
+     "s": 8677.6,
+     "e": 8957.3,
+     "launch": 260.1
+    },
+    {
+     "id": "compute j1|pack|1-0",
+     "kind": "pack",
+     "j": 1,
+     "lane": "compute j1",
+     "label": "C j1 self",
+     "s": 8675.2,
+     "e": 8720.5,
+     "launch": 262.5
+    }
+   ]
+  }
+ ]
+}
