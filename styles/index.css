@@ -1,4 +1,111 @@
+/* Colours and layout from the FZJ beamer theme (beamertheme-master/) */
+:root {
+  --fzj-blue: rgb(2, 61, 107);
+  --fzj-lightblue: rgb(173, 189, 227);
+  --fzj-gray: rgb(235, 235, 235);
+  --fzj-red: rgb(235, 95, 115);
+  --slidev-theme-primary: var(--fzj-blue);
+}
+
+.slidev-layout {
+  color: black;
+  padding: 2rem 1.75rem 4rem;
+}
+
+/* Frame title: bold, uppercase, FZJ blue */
+.slidev-layout h1 {
+  color: var(--fzj-blue);
+  font-weight: 700;
+  font-size: 1.75rem;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
 .slidev-layout h1 + p {
   opacity: 1;
   margin-top: 0;
+}
+
+.slidev-layout ul li::marker {
+  color: var(--fzj-blue);
+}
+
+.slidev-layout strong {
+  color: var(--fzj-blue);
+}
+
+/* Title slide: image above a blue band with white title, light-blue subtitle */
+.slidev-layout.fzj-cover {
+  padding: 0;
+}
+
+.fzj-cover .graphic {
+  position: absolute;
+  top: 5%;
+  left: 1.75rem;
+  right: 1.75rem;
+  width: calc(100% - 3.5rem);
+  height: 45%;
+  object-fit: cover;
+}
+
+.fzj-cover .band {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 29%;
+  background: var(--fzj-blue);
+  color: white;
+  padding: 1.25rem 1.75rem 0;
+}
+
+.slidev-layout.fzj-cover h1 {
+  color: white;
+  text-transform: none;
+  font-size: 2rem;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.fzj-cover h1 ~ p {
+  color: var(--fzj-lightblue);
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.fzj-cover p.meta {
+  color: white;
+  font-weight: 400;
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+}
+
+.fzj-cover .meta span + span::before {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  background: white;
+  margin: 0 0.6em;
+  vertical-align: -0.1em;
+}
+
+/* Footer: Helmholtz banner, date, slide number, logo */
+.fzj-footer {
+  position: absolute;
+  left: 1.75rem;
+  right: 1.75rem;
+  bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  color: var(--fzj-blue);
+  font-size: 0.55rem;
+}
+
+.fzj-footer img {
+  height: 2.2rem;
 }

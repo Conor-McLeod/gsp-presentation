@@ -1,27 +1,28 @@
 ---
-theme: seriph
+theme: default
+colorSchema: light
 title: Emulating FP64 on low-precision accelerators
 info: |
   ## Emulating FP64 on low-precision accelerators
   par_gemul8 and the Ozaki scheme on JUPITER.
-class: text-center
+fonts:
+  sans: Arimo
+  mono: Cousine
+date: October 2026
+layout: cover
+author: Conor McLeod
+institute: JSC Guest Student Programme
 drawings:
   persist: false
 transition: slide-left
 comark: true
 ---
 
-# Emulating FP64 on low-precision accelerators
+# Node-level parallelisation of Ozaki Scheme II
 
 Accelarating a Multi-GPU implementation of Ozaki Scheme II
 
-Extending the parallelism in Ozaki Scheme II:
-
-Optimising Multi-GPU Distribution of INT8 Tensor-Core GEMMs on JUPITER
-
-<div class="mt-12 op-80">
-  Conor McLeod · JSC Guest Student Programme
-</div>
+Optimising Multi-GPU FP64 GEMM emulation on JUPITER GH200s
 
 <!--
 TODO: confirm title, subtitle and affiliation line.

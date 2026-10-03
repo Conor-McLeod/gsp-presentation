@@ -366,7 +366,7 @@ html.dark .tx {
   --accent: #3987e5;
 }
 
-.grid-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.grid-svg { width: 100%; height: auto; max-height: 340px; display: block; overflow: visible; }
 
 .r0 { --c: var(--c0); }
 .r1 { --c: var(--c1); }
