@@ -3,17 +3,17 @@ theme: default
 colorSchema: light
 title: Emulating FP64 on low-precision accelerators
 info: |
-  ## Emulating FP64 on low-precision accelerators
-  par_gemul8 and the Ozaki scheme on JUPITER.
+    ## Emulating FP64 on low-precision accelerators
+    par_gemul8 and the Ozaki scheme on JUPITER.
 fonts:
-  sans: Arimo
-  mono: Cousine
+    sans: Arimo
+    mono: Cousine
 date: October 2026
 layout: cover
 author: Conor McLeod
 institute: JSC Guest Student Programme
 drawings:
-  persist: false
+    persist: false
 transition: slide-left
 comark: true
 ---
@@ -24,42 +24,18 @@ Accelerating a Multi-GPU implementation of Ozaki Scheme II
 
 Optimising Multi-GPU FP64 GEMM emulation on JUPITER GH200s
 
-<!--
-TODO: confirm title, subtitle and affiliation line.
--->
-
----
-
-# Motivation: hardware is going low precision
-
-Driven by the AI boom, Nvidia's accelerators increasingly prioritise low-precision work.
-
-- Deep learning (LLM training and inference) works well in low precision, even as low as FP4
-- That is where the money is being deployed
-- Nvidia is rationally incentivised to follow it
-
-<!--
-Unlike scientific computing, deep learning workloads like LLM training and inference work well in low precision, even as low as FP4.
-
-There are currently trillions of dollars being deployed.
-
-Nvidia, as a profit-making enterprise, is rationally incentivised to pursue this.
-
-TODO: finish these two sentences; add a source for the spending figure.
--->
-
 ---
 
 # Motivation
 
-NVIDIA hardware increasingly favours low precision
+Driven by the AI boom, Nvidia's newest accelerators increasingly prioritise low-precision work.
 
 <img src="./plots/nvidia_precision.png" alt="Nvidia flagship GPUs: low-precision tensor throughput versus native FP64, 2020 to 2026" class="mt-4 w-full bg-white rounded p-2" />
 
 <!--
 Low-precision throughput has grown by orders of magnitude, while native FP64 has stagnated and even been cut (B300).
 
-TODO: verify B200/Rubin figures and the Rubin emulated-FP64 marker before presenting.
+TODO: verify B200/Rubin figures before presenting.
 -->
 
 ---
@@ -78,16 +54,43 @@ TODO: finish "Nvidia will ..." and "To obtain high precision performance, ...".
 
 ---
 
-# Ozaki scheme II
+# Ozaki scheme I and II
 
-An algorithm for emulating high-precision matrix multiplication using low-precision operations, using the _Chinese Remainder Theorem_.
+Emulate one FP64 GEMM with many **exact** int8 GEMMs. The two schemes differ in how a number becomes int8 data.
 
-- Split each matrix into slices small enough that their products are exact
-- Multiply the slices with low-precision GEMMs
-- Sum the partial products to recover the FP64 result
+<div class="grid grid-cols-2 gap-10 mt-3">
+<div>
+
+**Scheme I: chop the bits**
+
+<OzakiSchemes scheme="I" />
+
+</div>
+<div v-click>
+
+**Scheme II: take residues (CRT)**
+
+<OzakiSchemes scheme="II" />
+
+</div>
+</div>
+
+<div v-click class="mt-4">
+
+**Scheme II wins:** each modulus adds ~8 bits to the range $\mathcal{P} = \prod p_i$ with one GEMM, while each extra slice adds a whole row of cross products.
+
+</div>
 
 <!--
-TODO: check these bullets against how you want to present scheme I; add a diagram of the slicing.
+Scheme I (Ozaki et al., 2012): each row of A / column of B is scaled by a shared power of two, then the significands are cut into consecutive chunks of a few bits. Each chunk fits in int8, and a chunk times a chunk, summed over k, still fits in int32, so every slice GEMM is exact. A_i B_j is weighted by 2^-(7(i+j)); pairs with i + j > s + 1 fall below FP64's last bit and are dropped, hence s(s+1)/2.
+
+Scheme II (Ozaki, Uchino, Imamura, 2025): scale once to integers, then do not cut the number at all. Its residues mod each p_i are int8, one GEMM per modulus gives A'B' mod p_i, and the CRT (next slides) rebuilds A'B' exactly.
+
+Point to make: the left grid is the cost of I, the right row is the cost of II, drawn with the same cell size.
+
+The N GEMMs are also independent until the CRT sum, which is what we spread over the four GPUs later.
+
+TODO: verify the counts shown (s = 8 slices / 36 GEMMs vs N = 14 moduli) against par_gemmul8 and the papers.
 -->
 
 ---
@@ -140,10 +143,10 @@ So $e_i$ is a **switch**: $1$ through modulus $p_i$, $0$ through all the others.
 <div>
 
 | $p = (3, 5, 7)$, $\mathcal{P} = 105$ | $\bmod 3$ | $\bmod 5$ | $\bmod 7$ |
-|---|:-:|:-:|:-:|
-| $e_1 = 35 \cdot 2 = 70$ | $1$ | $0$ | $0$ |
-| $e_2 = 21 \cdot 1 = 21$ | $0$ | $1$ | $0$ |
-| $e_3 = 15 \cdot 1 = 15$ | $0$ | $0$ | $1$ |
+| ------------------------------------ | :-------: | :-------: | :-------: |
+| $e_1 = 35 \cdot 2 = 70$              |    $1$    |    $0$    |    $0$    |
+| $e_2 = 21 \cdot 1 = 21$              |    $0$    |    $1$    |    $0$    |
+| $e_3 = 15 \cdot 1 = 15$              |    $0$    |    $0$    |    $1$    |
 
 </div>
 <div>
@@ -187,22 +190,6 @@ Whether that is x itself depends on P: try int64 max with N = 8 (wraps), then N 
 
 ---
 
-# Ozaki scheme II
-
-Uses the Chinese Remainder Theorem.
-
-- Scale $A$ and $B$ to integer matrices $A'$, $B'$
-- Compute $C_i = A'B' \bmod m_i$ for pairwise-coprime moduli $m_i$
-- Reconstruct $A'B'$ from the $C_i$ with the CRT, then scale back
-
-<!--
-TODO: check these bullets; say why scheme II beats scheme I (GEMM count), and how many moduli are needed for FP64.
--->
-
----
-clicks: 5
----
-
 # Ozaki scheme II, step by step
 
 <OzakiSteps :step="$clicks" />
@@ -220,24 +207,7 @@ A real 4x4 by 4x3 product, run through the same accurate-mode pipeline as par_ge
 
 ---
 
-# The platform
-
-JUPITER
-
-- Each node has 4x Grace Hopper 200 superchips
-
-<!--
-I'm grateful to have been able to spend this summer using JUPITER nodes, each of which has 4x Grace Hopper 200 superchips.
-
-TODO: node diagram or photo; memory and interconnect figures if relevant.
--->
-
----
-
 # par_gemull8
-
-- Started from a functional prototype put together using AI tools
-- Around 14k lines to productionise and streamline
 
 Three paths:
 
@@ -263,8 +233,6 @@ Each MPI rank owns one tile of every matrix.
 TODO: talk through the process grid (prow/pcol) and the local tile sizes.
 -->
 
----
-clicks: 6
 ---
 
 # How the tiles move
@@ -399,13 +367,13 @@ show(con.sql("""
 
 `uv run questions/stage_by_rank.py`
 
-| stage | r0 | r1 | r2 | r3 |
-|---|--:|--:|--:|--:|
-| assemble | 2.235 | 2.215 | 2.182 | 2.228 |
-| dsm+invscal+crt | 0.697 | 0.698 | 0.696 | 0.644 |
-| modexpand | 0.640 | 0.633 | 0.643 | 0.641 |
+| stage            |    r0 |    r1 |                                                         r2 |    r3 |
+| ---------------- | ----: | ----: | ---------------------------------------------------------: | ----: |
+| assemble         | 2.235 | 2.215 |                                                      2.182 | 2.228 |
+| dsm+invscal+crt  | 0.697 | 0.698 |                                                      0.696 | 0.644 |
+| modexpand        | 0.640 | 0.633 |                                                      0.643 | 0.641 |
 | moduli GEMM+conv | 6.642 | 6.665 | <span class="text-[var(--fzj-red)] font-bold">7.331</span> | 6.700 |
-| scaling | 2.693 | 2.687 | 2.662 | 2.694 |
+| scaling          | 2.693 | 2.687 |                                                      2.662 | 2.694 |
 
 <div v-click="4" class="mt-3 text-sm">
 
@@ -482,8 +450,8 @@ The fused CUTLASS GEMM launches 132 blocks: **one per SM** on the GH200. Anythin
 
 - Runs on the **copy engines**, so **zero SMs** are used
 - Each rank maps its peers' buffers once over MPI, then:
-  - **pulls** the A/B int8 planes straight into its assembled buffer, so one strided copy replaces recv + unpack
-  - **pushes** each C tile to its owner as soon as that GEMM ends
+    - **pulls** the A/B int8 planes straight into its assembled buffer, so one strided copy replaces recv + unpack
+    - **pushes** each C tile to its owner as soon as that GEMM ends
 - The ordering NCCL used to provide now comes from events + two host barriers
 
 </div>
@@ -502,6 +470,7 @@ Behind PGEMM_PEER_COPY=1. It needs 4 ranks on one node with distinct P2P-capable
 -->
 
 ---
+
 clicks: 3
 ---
 
@@ -531,12 +500,12 @@ Hover any bar for its times. "zoom" shows the first 1.6 ms, where the copy reord
 
 `par_ozaki_async`, 12000³, 8 moduli. Every step rebuilt and rerun on **one node**, interleaved. Slowest rank, mean of 2 jobs.
 
-| Step | Total (ms) | Δ (ms) | Assemble + GEMM (ms) |
-|---|--:|--:|--:|
-| NCCL | 14.89 | | 11.08 |
-| **A/B planes on the copy engines** | **13.59** | **−1.30** | 9.80 |
-| **Copies reordered: GEMM 0's inputs first** | **13.19** | **−0.40** | 9.45 |
-| **C tiles pushed peer-to-peer** | **12.83** | **−0.36** | 8.97 |
+| Step                                        | Total (ms) |    Δ (ms) | Assemble + GEMM (ms) |
+| ------------------------------------------- | ---------: | --------: | -------------------: |
+| NCCL                                        |      14.89 |           |                11.08 |
+| **A/B planes on the copy engines**          |  **13.59** | **−1.30** |                 9.80 |
+| **Copies reordered: GEMM 0's inputs first** |  **13.19** | **−0.40** |                 9.45 |
+| **C tiles pushed peer-to-peer**             |  **12.83** | **−0.36** |                 8.97 |
 
 - **14.9 → 12.8 ms (−14%)**, same accuracy (max rel. error 7.3 × 10⁻¹⁵)
 - Every step helps, and no job of one step overlaps a job of the next

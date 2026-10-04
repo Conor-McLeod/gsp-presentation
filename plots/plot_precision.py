@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
-GREEN, GREY, RED, BLUE = "#76b900", "#8a8f98", "#e5484d", "#3b6fd4"
+GREEN, GREY, BLUE = "#76b900", "#8a8f98", "#3b6fd4"
 INK, MUTED = "#1c1e21", "#6b7280"
 
 plt.rcParams.update({
@@ -47,10 +47,6 @@ b1 = ax1.bar(x - w / 2, df["low_precision_dense_tflops"], w, color=GREEN,
              label="Lowest-precision tensor core", zorder=3)
 b2 = ax1.bar(x + w / 2, df["fp64_native_tflops"], w, color=GREY,
              label="Native FP64", zorder=3)
-emu = df["fp64_emulated_tflops"].notna()
-ax1.scatter(x[emu] + w / 2, df.loc[emu, "fp64_emulated_tflops"], marker="D",
-            s=90, color=RED, edgecolor="white", linewidth=1.5, zorder=4,
-            label="FP64 via Ozaki emulation")
 style(ax1, labels)
 ax1.set_ylim(0.6, 1e5)
 ax1.set_ylabel("TFLOPS (log scale)")
