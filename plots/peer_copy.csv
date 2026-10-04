@@ -1,0 +1,5 @@
+step,total_ms,assemble_gemm_ms
+NCCL,14.89,11.08
+A/B planes on the copy engines,13.59,9.80
+Copies reordered: GEMM 0's inputs first,13.19,9.45
+C tiles pushed peer-to-peer,12.83,8.97
