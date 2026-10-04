@@ -3,17 +3,17 @@ theme: default
 colorSchema: light
 title: Emulating FP64 on low-precision accelerators
 info: |
-    ## Emulating FP64 on low-precision accelerators
-    par_gemul8 and the Ozaki scheme on JUPITER.
+  ## Emulating FP64 on low-precision accelerators
+  par_gemul8 and the Ozaki scheme on JUPITER.
 fonts:
-    sans: Arimo
-    mono: Cousine
+  sans: Arimo
+  mono: Cousine
 date: October 2026
 layout: cover
 author: Conor McLeod
 institute: JSC Guest Student Programme
 drawings:
-    persist: false
+  persist: false
 transition: slide-left
 comark: true
 ---
@@ -36,20 +36,6 @@ Driven by the AI boom, Nvidia's newest accelerators increasingly prioritise low-
 Low-precision throughput has grown by orders of magnitude, while native FP64 has stagnated and even been cut (B300).
 
 TODO: verify B200/Rubin figures before presenting.
--->
-
----
-
-# Motivation: where that leaves us
-
-Scientific simulations have long operated in the high-precision FP64 regime.
-
-The onus falls on us to find ways to _emulate_ FP64 algorithms in lower precision.
-
-<!--
-This leaves scientific simulations, long operating in FP64, in a pickle.
-
-TODO: finish "Nvidia will ..." and "To obtain high precision performance, ...".
 -->
 
 ---
@@ -190,18 +176,6 @@ Click a rank to isolate its traffic in the all-to-all stages.
 
 ---
 
-# Step one: profile the code
-
-We added NVTX ranges throughout the codebase.
-
-<!--
-The first step was to profile the code. We added nvtx ranges throughout the codebase to do this.
-
-TODO: a snippet showing an NVTX range, and a profiler timeline screenshot.
--->
-
----
-
 # Copy engine based collectives
 
 The fused CUTLASS GEMM launches 132 blocks: **one per SM** on the GH200. Anything else on the SMs competes with it.
@@ -222,8 +196,8 @@ The fused CUTLASS GEMM launches 132 blocks: **one per SM** on the GH200. Anythin
 
 - Runs on the **copy engines**, so **zero SMs** are used
 - Each rank maps its peers' buffers once over MPI, then:
-    - **pulls** the A/B int8 planes straight into its assembled buffer, so one strided copy replaces recv + unpack
-    - **pushes** each C tile to its owner as soon as that GEMM ends
+  - **pulls** the A/B int8 planes straight into its assembled buffer, so one strided copy replaces recv + unpack
+  - **pushes** each C tile to its owner as soon as that GEMM ends
 - The ordering NCCL used to provide now comes from events + two host barriers
 
 </div>
@@ -390,7 +364,7 @@ The DuckDB session is disposable. Parquet + runs.csv are the durable artifacts; 
 
 # Questions that steered the project
 
-<div class="text-sm -mt-2">Twelve question files so far, each comparing along a different axis of the same tables</div>
+<div class="text-sm -mt-2">Reproducible reports for rapidly evaluating specific metrics not easily accessible from NSight Systems GUI</div>
 
 <ReportGallery class="mt-2" />
 
@@ -408,73 +382,41 @@ Timing vs NVTX: the driver's own stage timers and the NVTX ranges agree, so we c
 
 ---
 
-# Tuning the fused CUTLASS GEMM
+# Also along the way
 
-The GEMM is **power-bound**: at ~990 MHz it already runs at ~90% of INT8 peak *for that clock*. A config wins by saving energy, not instructions.
-
-<img src="./plots/fused_tune.png" alt="Scatter of 30 tuning candidates: clock ratio against cycles ratio, with lines of equal time. Smaller tiles keep cycles flat but lose 14 to 31 percent of clock; bigger clusters and capped SM counts cost 40 to 60 percent more cycles; only the tile swizzle candidates land in the faster region, at about 1.2x clock for 1.04x cycles" class="mx-auto mt-1 h-[300px] bg-white rounded p-1" />
-
-- Each candidate runs between two baselines **in the same job**, scored on the slowest rank: node and GPU clock cancel, A/A noise ~1.6%
-- 6 jobs, ~30 configs: tile shape, cluster, schedule, Stream-K, raster, epilogue, panelling, SM cap
+- **Profiling on JUPITER**: NVTX ranges on every pipeline stage, Nsight Systems and Nsight Compute in the batch scripts
+- **Cleanup**: one set of naming conventions across the repo, duplicated code merged, dead code and old drivers removed: **−4,400 lines** net in `src/`, `include/`, `main/`
+- **Correctness**: every `run_*` driver checks its result against cuBLAS
+- **Tuning**: swizzled the fused GEMM's tile scheduler, ~10% faster `par_ozaki_async`
+- **Fixes**: set the device before NCCL init, `sbatch` path bugs, GPU binding so every rank sees all four GPUs
 
 <!--
-Harness: PGEMM_FUSED_VARIANT picks a compiled CUTLASS config at run time, and PGEMM_FUSED_{RASTER,SWIZZLE,PANEL} set the tile scheduler without a rebuild. One SLURM job = one round: base, A, base, B, ..., base, one nsys pass each, 10 timed reps, all on one node. Score = candidate fused-GEMM time / mean of the two baselines either side, per rank; "worst" is the largest of the four, because the slowest rank paces the run. max_rel_err must be bit-identical (integer arithmetic), and the north star must not get worse.
+The things that don't get a slide of their own.
 
-Why power-bound: other kernels on the same GPU run at 1640-1750 MHz and the clock sits at 1980 between them; the fused GEMM averages 925 MHz. Full-rate INT8 tensor work exceeds the power budget.
+Profiling: nvtx ranges on the sync and async paths, nsys and ncu stages in script1.sh, reports written outside $HOME. Everything else in the talk is built on these ranges.
 
-Reading the plot: x is clock, y is cycles, both against the in-job baseline on the slowest rank; time = cycles / clock, so the diagonals are lines of equal time. Rounds 4-6 are against swizzle 8 as the baseline, rounds 1-3 against the old default.
+Cleanup: written down in docs/style-guide.md (case, l_/g_ for local/global, operand letters, namespaces). par_gemm and benchmark retired in favour of the run_* drivers; ozaki::real merged into ozaki, the crt alias layer removed, three copies of moduli_range and the fused-kernel setup merged into one. 116 files changed, +9.4k / -13.8k since my first commit.
 
-- Smaller tiles / single-CTA clusters / pingpong: cycles flat, clock down 14-31%. Less multicast means more data movement per op, more power.
-- Clusters 2x2 and 4x1: clock up 5-26%, but +57% cycles -- the persistent grid asked for more clusters than can be co-resident. Sizing the grid from the real occupancy (30 clusters) cut that to +10%, still a loss.
-- SM cap 128/120/112: +40-60% cycles, not explained by occupancy; dropped since nothing it affects can win.
-- Stream-K: kernel 1.03, but the north star went to 1.58. Dropped.
+Tuning: one setting changed (CUTLASS max_swizzle_size 1 -> 8). The GPUs run the GEMM at a reduced clock to stay within power. Swizzling cuts the memory traffic, so they clock higher. Fused GEMM 13-17% faster, whole call ~10%, same accuracy. Details in par_gemmul8 docs/fused-gemm-tuning.md.
+
+NCCL fix: ncclCommInitRank was called before cudaSetDevice and its return code wasn't checked.
+
+Also: env_setup.sh for JUPITER, a single-GPU script for the workstation, clangd/LSP and formatting for the whole project.
 -->
 
 ---
 
-# Tuning the fused CUTLASS GEMM: swizzle 8
+# References
 
-One line changed: the tile scheduler's `max_swizzle_size` **1 → 8**. Same 128×256×128 tile, 2×1 cluster, cooperative persistent kernel.
+- K. Ozaki, T. Ogita, S. Oishi, and S. M. Rump, ‘Error-free transformations of matrix multiplication by using fast routines of matrix multiplication and its applications’, Numer Algor, vol. 59, no. 1, pp. 95–118, Jan. 2012, doi: 10.1007/s11075-011-9478-1.
 
-<div class="grid grid-cols-2 gap-8 mt-4">
-<div>
+- Y. Uchino et al., ‘High-Performance and Power-Efficient Emulation of Matrix Multiplication using INT8 Matrix Engines’, in Proceedings of the SC ’25 Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis, in ACM Conferences. , 2025, pp. 1824–1831. doi: 10.1145/3731599.3767539.
 
-**Why it helps**
+---
+layout: center
+class: text-center
+---
 
-- Each 132-CTA wave now covers a ~16×8 block of tiles, not a strip: far fewer unique A+B bytes per wave
-- DRAM read bandwidth **40–45% → ~19%** of peak
-- Clock **~975 → ~1190 MHz**; Tensor Active unchanged at ~92%
-- Cycles +4%, clock +19%: the whole gain is clock
+# Thank you!
 
-</div>
-<div>
-
-**What it bought**
-
-- Fused GEMM time **−13 to −17%** on the slowest rank
-- Whole `par_ozaki_async` call **~−10%**
-- Won in **every job it ran in**, on 4 different nodes, including in reverse (old default 1.20× slower)
-- `max_rel_err` bit-identical: 7.289 × 10⁻¹⁵
-
-</div>
-</div>
-
-<div class="mt-4">
-
-Everything else lost or sat within noise, so 6 of the 30 budgeted jobs were used. The harness stays in for next time.
-
-</div>
-
-<!--
-The swizzle numbers, slowest-rank "worst" ratio: 0.875 (r02), 0.867 and 0.857 (r03); reverse check in r04, the old default ran 1.199x the new one. North star: 0.892, 0.881, 0.903, and 1.117 in reverse. Jobs 2167598, 2167821, 2168384 on jpbo-048-26, jpbo-006-27, jpbo-064-32 (plus r05/r06 with it as base).
-
-Mechanism: swizzle 8 with a 2x1 cluster turns each 132-CTA wave into a ~16x8 block of 128x256 tiles, about the footprint that minimises unique A+B bytes per wave. DRAM traffic halves, the chip spends less power moving data, and the power-limited clock rises. DRAM measured on r03, ranks 0 and 2.
-
-Swizzle 2 and 4 were on the same trend (0.948, 0.895), and raster M with swizzle 8 made no difference (0.863 vs 0.867). N panelling on top of it lost (0.927, 0.892).
-
-Validation job 2168641 (scripts/script1.sh on 6ea1f6c): all three drivers correct, par_ozaki_async 11.55 / 11.92 ms. Different node from the peer-copy jobs, so not directly comparable with 12.8 ms there -- the in-job ratios are the comparison that counts.
-
-Next lever, if anyone continues: L2 -> SMEM traffic. DRAM is already about as good as this tile allows.
-
-Full log: par_gemmul8 docs/fused-gemm-tuning.md, data in analysis/fused_tune.csv.
--->
+Questions?

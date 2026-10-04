@@ -17,6 +17,9 @@ importers:
       '@slidev/theme-seriph':
         specifier: latest
         version: 0.25.0
+      katex:
+        specifier: ^0.18.7
+        version: 0.18.7
       vue:
         specifier: ^3.5.33
         version: 3.5.43(typescript@6.0.3)
