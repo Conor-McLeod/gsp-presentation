@@ -20,7 +20,7 @@ comark: true
 
 # Node-level parallelisation of Ozaki Scheme II
 
-Accelarating a Multi-GPU implementation of Ozaki Scheme II
+Accelerating a Multi-GPU implementation of Ozaki Scheme II
 
 Optimising Multi-GPU FP64 GEMM emulation on JUPITER GH200s
 
@@ -305,28 +305,160 @@ CUTLASS is .
 
 ---
 
-# Side quest: Cross-rank/run/version analysis pipeline with <img src="/svg/duckdb_inline_lightmode.svg" alt="DuckDB" class="inline h-12 align-middle" />
+# Side quest: every profile in one database <img src="/svg/duckdb_inline_lightmode.svg" alt="DuckDB" class="inline h-10 align-middle ml-1" />
 
-<div class="flex justify-center">
+Opening `.nsys-rep` files one at a time doesn't scale to 4 ranks × 3 methods × dozens of jobs.
 
-```mermaid {scale: 0.5}
-flowchart LR
-    cluster["jupiter<br/>script1.sh"] -->|sync.sh| reps[(".nsys-rep")]
-    cluster -->|sync.sh| logs[("job logs")]
+<div class="grid grid-cols-5 gap-2 mt-3 text-center">
+  <div class="stat"><b>28</b><span>profiled jobs</span></div>
+  <div class="stat"><b>336</b><span>rank profiles</span></div>
+  <div class="stat"><b>15</b><span>GH200 nodes</span></div>
+  <div class="stat"><b>27 GB→385 MB</b><span>SQLite → parquet</span></div>
+  <div class="stat"><b>0.3 s</b><span>per question</span></div>
+</div>
 
-    reps -->|nsys export| sqlite[(".sqlite")]
-    sqlite -->|build.py| facts[("facts/*.parquet")]
-    logs -->|ingest.py| runs[("runs.csv")]
+<div class="pipe mt-3">
+  <span>jupiter<br><small>nsys, 4 ranks</small></span><i>→</i>
+  <span>.nsys-rep<br><small>sync.sh</small></span><i>→</i>
+  <span>.sqlite<br><small>nsys export</small></span><i>→</i>
+  <span>facts/*.parquet<br><small>build.py</small></span><i>→</i>
+  <span class="hl">DuckDB views<br><small>setup.sql</small></span><i>→</i>
+  <span class="hl">questions/*.py<br><small>one file each</small></span>
+</div>
 
-    facts --> setup["setup.sql<br/>DuckDB views"]
-    runs --> setup
-    setup --> out["questions/*.py<br/>plots/*.py"]
+<div class="grid grid-cols-[1fr_1.05fr] gap-6 mt-3">
+<div>
+
+- A `.nsys-rep` **is a SQLite database**: `nsys export` dumps it, and DuckDB reads it directly
+- Every row carries **`job_id · method · rank · hostname`**, and every timestamp is shifted to absolute UTC, so ranks and jobs share one time axis
+- Comparing across runs, ranks or methods becomes a `GROUP BY`
+
+</div>
+<div>
+
+```sql
+-- every fused GEMM launch, every job, every rank
+select hostname, rank, avg(dur_us) as gemm_us
+from kernels join profiles using (job_id, method, rank)
+where mod_idx is not null
+group by all order by gemm_us desc
 ```
 
 </div>
+</div>
 
-- `.nsys-rep` files are really just `.sqlite` files underneath
--
+<style>
+.stat { border: 1px solid #e4e3df; border-top: 3px solid var(--fzj-blue); border-radius: 6px; padding: 6px 4px; }
+.stat b { display: block; font-size: 1.3rem; line-height: 1.2; white-space: nowrap; }
+.stat span { font-size: 0.72rem; color: #52514e; }
+.pipe { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; }
+.pipe span { font-family: var(--slidev-code-font-family, monospace); background: var(--fzj-gray); border-radius: 5px; padding: 3px 8px; text-align: center; line-height: 1.25; }
+.pipe span.hl { background: color-mix(in srgb, var(--fzj-lightblue) 55%, white); color: var(--fzj-blue); font-weight: 700; }
+.pipe small { font-family: var(--slidev-font-family, sans-serif); font-weight: 400; color: #52514e; font-size: 0.66rem; }
+.pipe i { color: #8a8984; font-style: normal; }
+</style>
+
+<!--
+Every profile we've taken is in one place. sync.sh pulls the reports and the job logs off jupiter with one rsync, so one TOTP prompt. nsys export turns each .nsys-rep into SQLite, and build.py projects the tables we care about (kernels, NVTX ranges, memcpys, MPI calls, GPU metrics) into parquet. 27 GB turns into 385 MB because almost all of a profile's size is OSRT_API, about 400k rows per profile, 90% of them `accept`, and nothing reads it.
+
+The trick that makes cross-rank work possible: every nsys timestamp is relative to that process's own session start. We add TARGET_INFO_SESSION_START_TIME's UTC epoch to every one, so rank 0's kernels and rank 3's land on the same time axis. build.py also checks that the rank in the filename matches MPI_RANKS, and that every profile has the same export schema version.
+
+The DuckDB session is disposable. Parquet + runs.csv are the durable artifacts; everything is rebuilt from them in seconds.
+-->
+
+---
+
+# A question is one file
+
+<div class="grid grid-cols-[1.15fr_1fr] gap-5">
+<div>
+
+```python {all|3-4|7-11|13-16}
+from common import connect, show
+
+JOB = "1852819"            # edit, re-run
+METHOD = "par_ozaki"
+
+con = connect()            # setup.sql: views over all 336 profiles
+con.execute("""
+    create or replace temp table stage_rows as
+    select stage, rank, dur_ms from stages
+    where job_id = $job and method = $method and not is_warmup
+""", {"job": JOB, "method": METHOD})
+
+show(con.sql("""
+    pivot stage_rows on rank using round(avg(dur_ms), 3) as ms
+    group by stage order by stage
+""").df(), f"{JOB} / {METHOD}: stage ms per rank")
+```
+
+<div class="text-xs opacity-70 mt-1">questions/stage_by_rank.py, trimmed</div>
+
+</div>
+<div v-click="3" class="tight">
+
+`uv run questions/stage_by_rank.py`
+
+| stage | r0 | r1 | r2 | r3 |
+|---|--:|--:|--:|--:|
+| assemble | 2.235 | 2.215 | 2.182 | 2.228 |
+| dsm+invscal+crt | 0.697 | 0.698 | 0.696 | 0.644 |
+| modexpand | 0.640 | 0.633 | 0.643 | 0.641 |
+| moduli GEMM+conv | 6.642 | 6.665 | <span class="text-[var(--fzj-red)] font-bold">7.331</span> | 6.700 |
+| scaling | 2.693 | 2.687 | 2.662 | 2.694 |
+
+<div v-click="4" class="mt-3 text-sm">
+
+Rank 2 is 10% slower on the GEMM. Why? That's the next file:
+
+<div class="chain">
+  <code>stage_by_rank</code><i>→</i><code>kernel_clock</code><i>→</i><code>pinned-node rerun</code>
+</div>
+
+Three questions, two days, ending in "the slow GPU is hardware"
+
+</div>
+</div>
+</div>
+
+<style>
+.tight table { font-size: 0.8rem; margin-top: 0.4rem; }
+.tight th, .tight td { padding: 0.2rem 0.5rem; }
+.tight td { font-variant-numeric: tabular-nums; }
+.chain { display: flex; align-items: center; gap: 6px; margin: 6px 0; font-size: 0.8rem; }
+.chain code { background: color-mix(in srgb, var(--fzj-lightblue) 45%, white); color: var(--fzj-blue); }
+.chain i { color: #8a8984; font-style: normal; }
+</style>
+
+<!--
+Each question is a Python file with its parameters as literals at the top. You don't pass CLI arguments: you edit the literal and re-run. A literal can be a list of ranks or two job ids to compare, which argparse can't really express.
+
+All the logic is SQL against the views in setup.sql. DuckDB's PIVOT discovers the rank columns from the data, so a different-shaped run doesn't silently show empty columns.
+
+The question gets committed, so when the next job lands it's one command to ask it again. That is the iteration speed: the expensive part, getting the data into shape, is done once.
+
+This particular table started the GPU clock thread. Rank 2's GEMM was consistently slower. kernel_clock.py joined every GEMM launch to the GPU metrics samples inside it, which showed equal cycles at a lower clock. Then a pinned-node rerun showed which GPU is slow changes with the node. Those are the two clock slides later on.
+-->
+
+---
+
+# Questions that steered the project
+
+<div class="text-sm -mt-2">Twelve question files so far, each comparing along a different axis of the same tables</div>
+
+<ReportGallery class="mt-2" />
+
+<!--
+Each card is real output, trimmed to the rows that mattered.
+
+Hotspots: on the NCCL baseline, ncclDevKernel_SendRecv was 43% of the GPU time on rank 0, competing with the fused GEMM for SMs. That's what sent us to the copy engines.
+
+Copy order: by putting each peer copy's start and end on the same time axis as the GEMMs, we could see each link runs one copy at a time, and A(1) was going before B(0), which GEMM 0 needs.
+
+Kernel clock: the slow rank does the same number of cycles at a lower clock.
+
+Timing vs NVTX: the driver's own stage timers and the NVTX ranges agree, so we can trust the NVTX numbers. NVTX sees every rank, whereas the driver only prints rank 0's breakdown.
+-->
 
 ---
 
@@ -425,4 +557,47 @@ The C push: the C_mid exchange still went over NCCL and all landed after the las
 Cycles: from the nsys GPU metrics, each GEMM launch takes 4.36–4.66 M cycles under NCCL against 3.53–3.63 M with peer copy. The GPUs actually clock higher under NCCL (~1140 vs ~1000 MHz on GPU 0) because the GEMM is less tensor-dense, which partly hides it. NCCL is also noisy: its two reps differ by 1.2–1.3 ms, against 0.01–0.4 ms with peer copy.
 
 The fallback story (job 1703699): --gpu-bind=single:1 and --gpus-per-task=1 make srun set a per-rank CUDA_VISIBLE_DEVICES, so every rank reported device ordinal 0 and the peer-copy setup refused. Fixed with --gpu-bind=none.
+-->
+
+---
+
+# The GPUs halve their clock under the GEMMs
+
+Sampled with `nsys --gpu-metrics-devices`: ~1900 MHz on other kernels, **~900–1000 MHz** once the int8 tensor cores are saturated.
+
+<img src="./plots/gpu_clock.png" alt="Left: GPC clock against time in a fused GEMM launch, four GPUs settling at 890 to 990 MHz against 1917 MHz on non-tensor kernels. Right: per GPU, GEMM time is 7 to 13 percent over GPU 0 while cycles are only about 2 percent over" class="mt-2 mx-auto h-[330px] bg-white rounded p-2" />
+
+<!--
+Five profiled jobs on one node, par_ozaki_async, 12000 cubed, 8 moduli.
+
+Left: the clock drops within about 250 us of a GEMM launch and stays there for the whole 3.5 ms kernel. On the same GPUs, non-tensor kernels in the same reps run at about 1900 MHz. ref_par_ozaki's GEMMs, which keep the tensor cores less busy (82% vs 92%), hold about 1300 MHz: the denser the tensor work, the lower the clock.
+
+So peak-TOPS comparisons at the boost clock understate our efficiency by about 2x.
+
+Right: GEMM time differs by up to 13% between ranks, but time x clock -- cycles -- by only about 2%. The slow GPUs do the same work at a lower clock.
+
+Caveat: nsys GPU metrics have no power counter, so "power capped" is an inference -- it fits (tensor-dense work, fast onset) but is not measured. To confirm: nvidia-smi power.draw and clocks_throttle_reasons during a run.
+-->
+
+---
+
+# The slow GPU is hardware, not the code
+
+Rank $r$ runs on GPU $r$ on every node, yet which GPU is slow changes with the node.
+
+<img src="./plots/gpu_clock_nodes.png" alt="Mean GEMM clock per GPU on three nodes, 5 to 6 jobs each. jpbo-103-23: GPU 0 fastest, GPU 2 slowest. jpbo-007-32: GPU 1 fastest, tied with GPU 2; GPU 3 slowest. jpbo-014-42: GPU 3 fastest, GPU 2 slowest. Slowest GPU takes 13 to 15 percent longer per GEMM" class="mt-1 mx-auto h-[290px] bg-white rounded p-2" />
+
+- Same fastest and slowest GPU in **all 16 jobs**; repeats scatter by <15 MHz against gaps of ~100–135 MHz
+- Upper bound on the cost: ~7–9% of par_ozaki_async wall time, if every GPU ran as fast as the node's best
+
+<!--
+16 jobs over three nodes, 5 or 6 each, pinned with sbatch -w. If the slowness came from the rank's share of the work, the same rank would be slow everywhere. Instead the slowest GPU is 2 on jpbo-103-23, 3 on jpbo-007-32 and 2 on jpbo-014-42, and the fastest is 0, 1 and 3.
+
+The fastest and slowest GPU of each node are the same in every job and in all three methods, ref included -- 48 out of 48. The only order swaps are near-ties: GPUs 1 and 2 on jpbo-007-32 (965 vs 966 MHz), GPUs 0 and 1 on jpbo-014-42. Job-to-job standard deviation per GPU is 3 to 12 MHz.
+
+The slowest GPU on a node takes 13 to 15% longer per GEMM launch. The 7-9% is an upper bound: (slowest - fastest rank GEMM time) x 2 launches per rep, over the timing-pass wall time -- 0.9 ms of 12.8 on jpbo-103-23 (7%), 1.1 of 13.1 on jpbo-014-42 (8%), 1.2 of 13.2 on jpbo-007-32 (9%). It assumes the slowest rank holds the others up at the exchange, which I have not checked.
+
+Small leftover: rank 0 needs 1-2.5% fewer cycles per GEMM than the other ranks in all 32 par_ozaki / par_ozaki_async runs, on whichever GPU it lands. That one is a rank effect, not yet explained.
+
+Open: chip-to-chip variation vs the slot's cooling/power delivery -- the data can't separate these. Power is still not measured.
 -->
